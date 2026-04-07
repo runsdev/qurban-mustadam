@@ -18,9 +18,9 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Arsip Suci | Pelacakan Kurban Langsung",
+  title: "Laporan Qurtek",
   description:
-    "Pantau setiap langkah ibadah kurban dengan transparansi penuh. Setiap hewan dikurasi dan dilacak dari pemilihan hingga distribusi akhir.",
+    "Pantau setiap langkah ibadah kurban dengan transparansi penuh. Setiap hewan dipantau dari pemilihan hingga distribusi akhir.",
 };
 
 export default function RootLayout({
