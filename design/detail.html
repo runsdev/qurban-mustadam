@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html class="light" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,400;0,700;0,900;1,400;1,900&amp;family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#c0b091",
+                    "on-primary-fixed": "#002117",
+                    "surface-variant": "#e4e2de",
+                    "on-surface": "#1b1c1a",
+                    "secondary-container": "#fed65b",
+                    "surface-container-low": "#f5f3ef",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed": "#b0f0d6",
+                    "on-secondary-container": "#745c00",
+                    "secondary-fixed-dim": "#e9c349",
+                    "on-tertiary-fixed-variant": "#51452d",
+                    "surface-tint": "#2b6954",
+                    "primary-fixed-dim": "#95d3ba",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed": "#f3e0c0",
+                    "tertiary-container": "#4e432b",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#ffe088",
+                    "surface-container-highest": "#e4e2de",
+                    "on-primary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "background": "#fbf9f5",
+                    "on-background": "#1b1c1a",
+                    "inverse-primary": "#95d3ba",
+                    "surface-dim": "#dbdad6",
+                    "surface-container": "#efeeea",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed": "#231a06",
+                    "inverse-surface": "#30312e",
+                    "surface": "#fbf9f5",
+                    "secondary": "#735c00",
+                    "outline-variant": "#bfc9c3",
+                    "surface-bright": "#fbf9f5",
+                    "on-primary-container": "#80bea6",
+                    "on-secondary-fixed-variant": "#574500",
+                    "outline": "#707974",
+                    "on-secondary-fixed": "#241a00",
+                    "on-primary-fixed-variant": "#0b513d",
+                    "surface-container-high": "#eae8e4",
+                    "inverse-on-surface": "#f2f0ed",
+                    "tertiary": "#372d17",
+                    "primary": "#003527",
+                    "tertiary-fixed-dim": "#d6c4a5",
+                    "primary-container": "#064e3b",
+                    "on-surface-variant": "#404944",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "2xl": "1rem",
+                    "3xl": "1.5rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Noto Serif"],
+                    "body": ["Plus Jakarta Sans"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>.material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24
+    }
+.glass-nav {
+    backdrop-filter: blur(24px)
+    }
+.emerald-gradient {
+    background: linear-gradient(135deg, #003527 0%, #064e3b 100%)
+    }
+body {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    background-color: #fbf9f5;
+    color: #1b1c1a
+    }
+h1, h2, h3, .serif {
+    font-family: "Noto Serif", serif
+    }
+.arabesque-pattern {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuAAqWG3DALrtRcvO9SbjM5BGJOUdV3m0TJ3mEgaibVPLFM2CDx0J8IXxanXKo3tGKderxAd1JHnuEsKF45J1i_Z8tKhIRlgcyrhq0nqsKeUW1PDUq8W1Vd9zE8VsOUPFNCt3sEjgM8Hrs8gGcjrioqwwVrr0U4QzbBVtB_DdqJ7KRGeMK68yJIFLiOTFrQeECREc-xTeJeMM_qny962sGENgRnr_WW5_T-3AzJkQAux5EM3IjxS93JYL2hCbuqy16MX_sOH_M9O);
+    opacity: 0.05
+    }</style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen pb-32 lg:pb-0 lg:pl-72">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-[#fbf9f5]/70 backdrop-blur-xl shadow-[0_12px_32px_rgba(55,45,23,0.06)]">
+<nav class="flex justify-between items-center w-full px-6 py-4 max-w-screen-2xl mx-auto">
+<div class="font-['Noto_Serif'] text-2xl italic font-black text-[#064E3B]">The Sacred Archive</div>
+<div class="hidden md:flex gap-8 items-center">
+<a class="font-['Noto_Serif'] text-lg font-bold tracking-tight text-[#1b1c1a]/60 hover:text-[#064E3B] transition-all duration-300" href="#">All Animals</a>
+<a class="font-['Noto_Serif'] text-lg font-bold tracking-tight text-[#064E3B] border-b-2 border-[#fed65b] pb-1" href="#">Cows</a>
+<a class="font-['Noto_Serif'] text-lg font-bold tracking-tight text-[#1b1c1a]/60 hover:text-[#064E3B] transition-all duration-300" href="#">Goats</a>
+<a class="font-['Noto_Serif'] text-lg font-bold tracking-tight text-[#1b1c1a]/60 hover:text-[#064E3B] transition-all duration-300" href="#">Sheep</a>
+</div>
+<div class="flex items-center gap-4 text-[#064E3B]">
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#f5f3ef] p-2 rounded-full transition-all">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#f5f3ef] p-2 rounded-full transition-all">person</span>
+</div>
+</nav>
+</header>
+<!-- SideNavBar (Web Only) -->
+<aside class="fixed left-0 top-0 hidden lg:flex flex-col h-full w-72 py-8 gap-2 bg-[#f5f3ef] border-r-0 z-40">
+<div class="px-8 mb-8 mt-16">
+<h2 class="font-['Noto_Serif'] text-xl text-[#064E3B] font-bold">Live Execution</h2>
+<p class="text-xs font-semibold opacity-60">D-Day Real-time Feed</p>
+</div>
+<div class="flex flex-col gap-1 px-4">
+<div class="flex items-center gap-4 text-[#1b1c1a]/70 px-4 py-3 hover:translate-x-1 transition-transform duration-300 cursor-pointer">
+<span class="material-symbols-outlined">hourglass_empty</span>
+<span class="font-['Plus_Jakarta_Sans'] text-sm font-semibold">Waiting</span>
+</div>
+<div class="flex items-center gap-4 text-[#1b1c1a]/70 px-4 py-3 hover:translate-x-1 transition-transform duration-300 cursor-pointer">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-['Plus_Jakarta_Sans'] text-sm font-semibold">In Progress</span>
+</div>
+<div class="flex items-center gap-4 text-[#1b1c1a]/70 px-4 py-3 hover:translate-x-1 transition-transform duration-300 cursor-pointer">
+<span class="material-symbols-outlined">content_cut</span>
+<span class="font-['Plus_Jakarta_Sans'] text-sm font-semibold">Slaughtered</span>
+</div>
+<div class="flex items-center gap-4 bg-white text-[#064E3B] rounded-xl shadow-sm px-4 py-3 ml-2">
+<span class="material-symbols-outlined">conveyor_belt</span>
+<span class="font-['Plus_Jakarta_Sans'] text-sm font-semibold">Processing</span>
+</div>
+<div class="flex items-center gap-4 text-[#1b1c1a]/70 px-4 py-3 hover:translate-x-1 transition-transform duration-300 cursor-pointer">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-['Plus_Jakarta_Sans'] text-sm font-semibold">Distribution</span>
+</div>
+<div class="flex items-center gap-4 text-[#1b1c1a]/70 px-4 py-3 hover:translate-x-1 transition-transform duration-300 cursor-pointer">
+<span class="material-symbols-outlined">verified</span>
+<span class="font-['Plus_Jakarta_Sans'] text-sm font-semibold">Completed</span>
+</div>
+</div>
+<div class="mt-auto px-6">
+<button class="w-full emerald-gradient text-white py-4 rounded-3xl font-bold shadow-lg hover:scale-95 transition-all duration-200">
+                Donate Qurban
+            </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pt-28 px-6 lg:px-12 max-w-6xl mx-auto space-y-12 pb-24">
+<!-- Hero Section: Animal Identification -->
+<section class="relative group">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
+<div class="lg:col-span-7 space-y-4">
+<div class="inline-flex items-center gap-2 bg-primary-container text-primary-fixed px-4 py-1.5 rounded-full text-sm font-bold tracking-widest uppercase">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-surface-tint opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-primary-fixed"></span>
+</span>
+                        Status: Processing
+                    </div>
+<h1 class="text-6xl md:text-8xl font-black text-primary tracking-tighter leading-none">#S088</h1>
+<h2 class="text-3xl md:text-4xl font-headline italic text-on-surface-variant">Sapi Limousin Unggulan</h2>
+</div>
+<div class="lg:col-span-5 relative">
+<div class="aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl bg-surface-container-low relative">
+<div class="absolute inset-0 arabesque-pattern pointer-events-none"></div>
+<img alt="Sapi Limousin" class="w-full h-full object-cover grayscale-[20%] hover:grayscale-0 transition-all duration-700" data-alt="Majestic brown Limousin bull standing in a lush green pasture under soft morning sunlight, high-end photography style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXSkVd4pgHkQxpU_goH916YuCHuHalIF5hAa5pRKYdKMcTaU66MYeUo_TDTEok2oR1OhyPoiBItHOT-Qv7gnKM9jPsIjwoM3_qTGH2EhJpHLdxQgvTXNE6BpmNKtMcurCuL4HJ7QjoDXkCga1mxOD0mm1te-STNJKpoY0YxaJ-7M33h31uKXPciQJBlZIESVLR4fEI87aeq-qBy1g_Uq1ZA-Iz-LG512ud-o3fz72oD4HnmQX5H_7O6YwqEoIDJM7PoCle6kvM"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid: Details & Shohibul -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Shohibul Section -->
+<div class="md:col-span-2 bg-surface-container-lowest rounded-3xl p-8 relative overflow-hidden shadow-sm border border-outline-variant/10">
+<div class="absolute top-0 right-0 w-32 h-32 arabesque-pattern opacity-10 pointer-events-none"></div>
+<h3 class="text-2xl font-headline mb-6 text-primary">Shohibul Qurban</h3>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<!-- Shohibul List (Simulated 7 names for Cow) -->
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full emerald-gradient flex items-center justify-center text-white font-bold text-xs">01</div>
+<span class="font-semibold text-on-surface">Bapak Ahmad Subarjo</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full emerald-gradient flex items-center justify-center text-white font-bold text-xs">02</div>
+<span class="font-semibold text-on-surface">Ibu Siti Aminah</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full emerald-gradient flex items-center justify-center text-white font-bold text-xs">03</div>
+<span class="font-semibold text-on-surface">Keluarga Al-Fatih</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full emerald-gradient flex items-center justify-center text-white font-bold text-xs">04</div>
+<span class="font-semibold text-on-surface">H. Muhammad Rizky</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full emerald-gradient flex items-center justify-center text-white font-bold text-xs">05</div>
+<span class="font-semibold text-on-surface">Alm. Bapak Yusuf</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full emerald-gradient flex items-center justify-center text-white font-bold text-xs">06</div>
+<span class="font-semibold text-on-surface">Ibu Ratna Sari</span>
+</div>
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl">
+<div class="w-10 h-10 rounded-full emerald-gradient flex items-center justify-center text-white font-bold text-xs">07</div>
+<span class="font-semibold text-on-surface">Bpk. Bambang Widjojo</span>
+</div>
+</div>
+</div>
+<!-- Stats/Specs Card -->
+<div class="space-y-6">
+<div class="bg-secondary-container text-on-secondary-container p-8 rounded-3xl shadow-sm">
+<span class="text-xs font-bold uppercase tracking-widest opacity-70">Estimasi Berat</span>
+<div class="text-4xl font-headline font-black mt-2">640 kg</div>
+<p class="text-sm mt-2 opacity-80">Bobot hidup saat penimbangan terakhir di karantina.</p>
+</div>
+<div class="bg-primary text-primary-fixed p-8 rounded-3xl shadow-lg relative overflow-hidden">
+<div class="absolute -bottom-4 -right-4 text-primary-container opacity-20 transform rotate-12">
+<span class="material-symbols-outlined text-9xl">verified_user</span>
+</div>
+<h3 class="text-xl font-headline mb-4">Sertifikasi Halal</h3>
+<p class="text-sm opacity-80 leading-relaxed">Hewan telah melewati inspeksi kesehatan dan dipastikan layak sesuai syariat Islam.</p>
+</div>
+</div>
+</section>
+<!-- Visual Journey / Timeline Section -->
+<section class="space-y-8">
+<div class="flex items-baseline justify-between border-b border-outline-variant/20 pb-4">
+<h3 class="text-3xl font-headline text-primary">Perjalanan Ibadah</h3>
+<span class="text-sm font-bold text-secondary">Tahap 4 dari 6</span>
+</div>
+<div class="relative">
+<!-- Timeline Track Background -->
+<div class="absolute top-1/2 left-0 w-full h-1 bg-surface-container-highest -translate-y-1/2 rounded-full hidden md:block"></div>
+<div class="grid grid-cols-1 md:grid-cols-6 gap-6 relative">
+<!-- Stage 1: Waiting -->
+<div class="relative group">
+<div class="aspect-square rounded-2xl overflow-hidden mb-4 shadow-md border-4 border-secondary-container">
+<img alt="Waiting Stage" class="w-full h-full object-cover" data-alt="Quiet stable with soft hay and warm lighting, a sense of preparation and peace, cinematic lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCE1letEEImqLjLSnyLmemb991kgAB99Cc-k6BWpSpyOLtyBHGbko3IkFyxNyb-G9nehWEA4XgYaZzWTOOcvMKD9GBvnY7KcEFHLNNyqrkk-UxFd4njHjgQfEaufSc1t6VC7kOyUYh_iqkV3aNGPmtU2xnFlh8_DQ_mCl7GRqFNNrqhNYROKQL7QkKQ7-rZf_WAz5vvjQZNRoljeRi9L-6b58DEiDSMc85CiUlKWhZp3OeHoudsGRqeMu5fK3Tvinjqf7SWP7tF"/>
+</div>
+<div class="text-center">
+<div class="w-6 h-6 bg-secondary-container rounded-full mx-auto mb-2 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<h4 class="font-bold text-xs uppercase tracking-tighter">Waiting</h4>
+<p class="text-[10px] opacity-60">12 Zulhijjah</p>
+</div>
+</div>
+<!-- Stage 2: In Progress -->
+<div class="relative group">
+<div class="aspect-square rounded-2xl overflow-hidden mb-4 shadow-md border-4 border-secondary-container">
+<img alt="Preparation Stage" class="w-full h-full object-cover" data-alt="Modern farm facility with clean environment, focused staff preparing for the ceremony, professional atmosphere" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBV3iJDM89Tk1ipYQiD37dihu83KUf_3o5McEPkANOkM9Mz0AU0k5Be4nmfX5cw0fER2jz0Q1Hx32T2La2if_dcBq_yL06XEEm6cHK2ZXICrEEEQRWbkUJp76eEm_PX_11hOrKxVR7-P8tiMG2kYbsUhXy2oqKqH7GeVb8KrL-xn1b-iTa3QEl69aT4p6KqZPdcFQB6oIkkGpVzARsYtnzZ7BnRIPkBH30Q_5-zhxZUs9Vja99JTZT5utUvVkxYROR6lk74p2st"/>
+</div>
+<div class="text-center">
+<div class="w-6 h-6 bg-secondary-container rounded-full mx-auto mb-2 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<h4 class="font-bold text-xs uppercase tracking-tighter">In Progress</h4>
+<p class="text-[10px] opacity-60">08:30 WIB</p>
+</div>
+</div>
+<!-- Stage 3: Slaughtered -->
+<div class="relative group">
+<div class="aspect-square rounded-2xl overflow-hidden mb-4 shadow-md border-4 border-secondary-container">
+<div class="w-full h-full bg-surface-container-highest flex items-center justify-center italic text-primary/40 p-4 text-center text-xs">
+                                Foto Tahap Penyembelihan Tersimpan di Arsip Privat
+                            </div>
+</div>
+<div class="text-center">
+<div class="w-6 h-6 bg-secondary-container rounded-full mx-auto mb-2 flex items-center justify-center">
+<span class="material-symbols-outlined text-xs text-on-secondary-container" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<h4 class="font-bold text-xs uppercase tracking-tighter">Slaughtered</h4>
+<p class="text-[10px] opacity-60">09:15 WIB</p>
+</div>
+</div>
+<!-- Stage 4: Processing (CURRENT) -->
+<div class="relative group scale-105 z-10">
+<div class="aspect-square rounded-2xl overflow-hidden mb-4 shadow-xl border-4 border-primary">
+<img alt="Processing Stage" class="w-full h-full object-cover" data-alt="Professional butchers in clean white uniforms meticulously preparing meat in a high-hygiene facility" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdyi2oAocQzzpfNYC1x7ckshMzQV9VdizucQ0gcr4Bb4LOttI5hUgOcIUoYC3ByPbraqHKdj9dqdpQUeh5NdGbSG8suempQ0hkLHFkJPFLKrdD4KoqWy8Z_cVUuvedw2-aCgpb3IrrgubcCtgKsBQ66fuzOW3WFGCMZO4jl-ssOp_wh4cI2VzQ1kNao2wQM9RJc55IMSBtiF6gjDqxYsYVbPy4g2k9fVOqNZSE5YCK2YMgtcNZaIx3J2BjcoxyhQxvEQ-pCVsO"/>
+</div>
+<div class="text-center">
+<div class="w-8 h-8 bg-primary text-white rounded-full mx-auto mb-2 flex items-center justify-center shadow-lg animate-pulse">
+<span class="material-symbols-outlined text-sm">conveyor_belt</span>
+</div>
+<h4 class="font-bold text-xs uppercase tracking-tighter text-primary">Processing</h4>
+<p class="text-[10px] font-bold text-primary">Sedang Berlangsung</p>
+</div>
+</div>
+<!-- Stage 5: Distribution (LOCKED) -->
+<div class="relative group opacity-40">
+<div class="aspect-square rounded-2xl overflow-hidden mb-4 shadow-sm bg-surface-container-high border-4 border-transparent flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-outline">local_shipping</span>
+</div>
+<div class="text-center">
+<div class="w-6 h-6 bg-surface-container-highest rounded-full mx-auto mb-2"></div>
+<h4 class="font-bold text-xs uppercase tracking-tighter">Distribution</h4>
+</div>
+</div>
+<!-- Stage 6: Completed (LOCKED) -->
+<div class="relative group opacity-40">
+<div class="aspect-square rounded-2xl overflow-hidden mb-4 shadow-sm bg-surface-container-high border-4 border-transparent flex items-center justify-center">
+<span class="material-symbols-outlined text-4xl text-outline">verified</span>
+</div>
+<div class="text-center">
+<div class="w-6 h-6 bg-surface-container-highest rounded-full mx-auto mb-2"></div>
+<h4 class="font-bold text-xs uppercase tracking-tighter">Completed</h4>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Location & Trust Footer -->
+<section class="bg-surface-container-low rounded-[3rem] p-12 text-center space-y-4">
+<h3 class="text-2xl font-headline text-primary">Lokasi Pelaksanaan</h3>
+<p class="text-on-surface-variant max-w-xl mx-auto">Kompleks Pemotongan Terpadu Al-Azhar, Klaten, Jawa Tengah. Fasilitas kami menerapkan standar kebersihan internasional dan protokol syariat ketat.</p>
+<div class="inline-flex items-center gap-2 text-primary font-bold">
+<span class="material-symbols-outlined">location_on</span>
+                Lihat di Peta
+            </div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-6 lg:hidden bg-[#fbf9f5]/80 backdrop-blur-2xl">
+<a class="flex flex-col items-center justify-center text-[#064E3B]/50 p-2" href="#">
+<span class="material-symbols-outlined">sensors</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[10px] uppercase tracking-widest font-bold">Live Feed</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-[#064E3B] text-white rounded-2xl p-3 mb-2 scale-110" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[10px] uppercase tracking-widest font-bold">My Qurban</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#064E3B]/50 p-2" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[10px] uppercase tracking-widest font-bold">Search</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#064E3B]/50 p-2" href="#">
+<span class="material-symbols-outlined">diversity_1</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[10px] uppercase tracking-widest font-bold">Impact</span>
+</a>
+</nav>
+</body></html>
