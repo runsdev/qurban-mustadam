@@ -298,6 +298,30 @@ export default function HomePageClient({ animals, stats }: Props) {
             </p>
           </div>
           <nav className="flex flex-col gap-1">
+            {/* Dashboard — show all */}
+            <button
+              onClick={resetFilters}
+              className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ml-4 mr-2 mb-1 ${
+                !filterStatus && !filterID && !filterJenis && !filterLokasi
+                  ? "bg-surface-container-lowest text-primary-container shadow-sm"
+                  : "text-on-surface/70 hover:translate-x-1 hover:bg-surface-container-lowest/50"
+              }`}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={
+                  !filterStatus && !filterID && !filterJenis && !filterLokasi
+                    ? { fontVariationSettings: '"FILL" 1' }
+                    : undefined
+                }
+              >
+                dashboard
+              </span>
+              <span>Dashboard</span>
+              <span className="ml-auto text-[10px] font-black text-on-surface-variant">
+                {animals.length}
+              </span>
+            </button>
             {(
               [
                 {
