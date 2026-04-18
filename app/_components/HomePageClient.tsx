@@ -40,6 +40,18 @@ function useCountUp(target: number, duration = 1200) {
 
   return value;
 }
+
+// ── Animated width hook (for progress bars) ──────────────────
+function useAnimatedWidth(targetPercent: number, delay = 200) {
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setWidth(targetPercent), delay);
+    return () => clearTimeout(timer);
+  }, [targetPercent, delay]);
+
+  return width;
+}
 import Link from "next/link";
 import type { Animal, AnimalStatus, SummaryStats } from "@/lib/types";
 
@@ -92,13 +104,13 @@ const statusCfg: Record<
   },
 };
 
-// Status → progress bar width (5 stages)
-const STATUS_WIDTH: Record<AnimalStatus, string> = {
-  Persiapan: "w-1/5",
-  Disembelih: "w-2/5",
-  Pengolahan: "w-3/5",
-  Distribusi: "w-4/5",
-  Selesai: "w-full",
+// Status → progress bar width % (5 stages)
+const STATUS_PERCENT: Record<AnimalStatus, number> = {
+  Persiapan: 20,
+  Disembelih: 40,
+  Pengolahan: 60,
+  Distribusi: 80,
+  Selesai: 100,
 };
 
 // Species → icon
@@ -117,7 +129,8 @@ function AnimalCard({ animal }: { animal: Animal }) {
       "border border-outline-variant hover:border-primary hover:text-primary",
   };
   const isCompleted = animal.status === "Selesai";
-  const width = STATUS_WIDTH[animal.status] ?? "w-1/5";
+  const targetPercent = STATUS_PERCENT[animal.status] ?? 20;
+  const animatedWidth = useAnimatedWidth(targetPercent, 300);
 
   return (
     <div
@@ -153,9 +166,10 @@ function AnimalCard({ animal }: { animal: Animal }) {
         <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
           <div className="flex-1 h-3 bg-surface-container-low rounded-full relative overflow-hidden">
             <div
-              className={`h-full rounded-full relative transition-all duration-700 ${
+              className={`h-full rounded-full relative transition-all duration-1000 ease-out ${
                 isCompleted ? "bg-primary" : "bg-secondary"
-              } ${width}`}
+              }`}
+              style={{ width: `${animatedWidth}%` }}
             >
               {!isCompleted && (
                 <div
@@ -412,8 +426,8 @@ export default function HomePageClient({ animals, stats }: Props) {
                 </h3>
                 <div className="mt-6 w-full h-2 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-secondary-container rounded-full transition-all duration-700"
-                    style={{ width: `${stats.progressPercent}%` }}
+                    className="h-full bg-secondary-container rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${useAnimatedWidth(stats.progressPercent, 400)}%` }}
                   />
                 </div>
               </div>
