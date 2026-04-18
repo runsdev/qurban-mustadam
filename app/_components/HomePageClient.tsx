@@ -4,7 +4,42 @@
 // ============================================================
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+
+// ── Count-up animation hook ──────────────────────────────────
+function useCountUp(target: number, duration = 1200) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const startRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    startRef.current = null;
+    if (target === 0) {
+      setValue(0);
+      return;
+    }
+
+    function step(timestamp: number) {
+      if (!startRef.current) startRef.current = timestamp;
+      const elapsed = timestamp - startRef.current;
+      // ease-out cubic for a satisfying deceleration
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [target, duration]);
+
+  return value;
+}
 import Link from "next/link";
 import type { Animal, AnimalStatus, SummaryStats } from "@/lib/types";
 
@@ -341,8 +376,8 @@ export default function HomePageClient({ animals, stats }: Props) {
             {/* Total Animals */}
             <div className="bg-surface-container-lowest p-8 rounded-2xl relative overflow-hidden arabesque-pattern">
               <div className="relative z-10">
-                <span className="text-secondary font-black text-4xl mb-1 block">
-                  {stats.totalAnimals.toLocaleString("id-ID")}
+                <span className="text-secondary font-black text-4xl mb-1 block tabular-nums">
+                  {useCountUp(stats.totalAnimals).toLocaleString("id-ID")}
                 </span>
                 <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">
                   Total Hewan
@@ -369,8 +404,8 @@ export default function HomePageClient({ animals, stats }: Props) {
             {/* Progress */}
             <div className="bg-primary-container p-8 rounded-2xl relative overflow-hidden">
               <div className="relative z-10 text-on-primary">
-                <span className="text-primary-fixed font-black text-4xl mb-1 block">
-                  {stats.progressPercent}%
+                <span className="text-primary-fixed font-black text-4xl mb-1 block tabular-nums">
+                  {useCountUp(stats.progressPercent)}%
                 </span>
                 <h3 className="text-sm font-bold opacity-70 uppercase tracking-widest">
                   Kemajuan Pelaksanaan
@@ -387,8 +422,8 @@ export default function HomePageClient({ animals, stats }: Props) {
             {/* Weight */}
             <div className="bg-secondary-container p-8 rounded-2xl relative overflow-hidden">
               <div className="relative z-10 text-on-secondary-container">
-                <span className="font-black text-4xl mb-1 block">
-                  {stats.totalWeightKg.toLocaleString("id-ID")} kg
+                <span className="font-black text-4xl mb-1 block tabular-nums">
+                  {useCountUp(stats.totalWeightKg).toLocaleString("id-ID")} kg
                 </span>
                 <h3 className="text-sm font-bold opacity-80 uppercase tracking-widest">
                   Estimasi Total Berat
