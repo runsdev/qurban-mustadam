@@ -113,10 +113,28 @@ const STATUS_PERCENT: Record<AnimalStatus, number> = {
   Selesai: 100,
 };
 
-// Species → icon
-function speciesIcon(species: string) {
-  if (species === "Sapi") return "token";
-  return "pets";
+// Species → Material Symbol icon with distinct visual per type
+function SpeciesIcon({ species }: { species: string; className?: string }) {
+  // Map each animal to a visually distinct Material Symbols icon
+  const iconMap: Record<string, { icon: string; label: string }> = {
+    Sapi: { icon: "agriculture", label: "Sapi" },         // barn/farm → Sapi
+    Kambing: { icon: "landscape", label: "Kambing" },      // mountain → Kambing gunung
+    Domba: { icon: "cloud", label: "Domba" },              // cloud/wool → Domba
+  };
+  const { icon, label } = iconMap[species] ?? { icon: "pets", label: species };
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span
+        className="material-symbols-outlined text-primary text-2xl"
+        style={{ fontVariationSettings: '"FILL" 1' }}
+      >
+        {icon}
+      </span>
+      <span className="text-[9px] font-black text-primary uppercase tracking-wider">
+        {label}
+      </span>
+    </div>
+  );
 }
 
 // ── Card for one animal ───────────────────────────────────────
@@ -150,9 +168,7 @@ function AnimalCard({ animal }: { animal: Animal }) {
                 : "bg-surface-container-low"
             }`}
           >
-            <span className="material-symbols-outlined text-primary text-3xl">
-              {speciesIcon(animal.species)}
-            </span>
+            <SpeciesIcon species={animal.species} className="text-primary" />
           </div>
           <div>
             <h4 className="font-bold text-lg text-primary">#{animal.id}</h4>
