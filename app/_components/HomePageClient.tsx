@@ -4,7 +4,7 @@
 // ============================================================
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 
 // ── Count-up animation hook ──────────────────────────────────
 function useCountUp(target: number, duration = 1200) {
@@ -227,7 +227,43 @@ interface Props {
   stats: SummaryStats;
 }
 
-export default function HomePageClient({ animals, stats }: Props) {
+export default function HomePageClient({ animals: initialAnimals, stats: initialStats }: Props) {
+  // ── Live data state (can be refreshed client-side) ──────────
+  const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
+  const [stats, setStats] = useState<SummaryStats>(initialStats);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+
+  // Keep in sync when server props change (e.g. on navigation)
+  useEffect(() => {
+    setAnimals(initialAnimals);
+    setStats(initialStats);
+  }, [initialAnimals, initialStats]);
+
+  // ── Refresh handler ─────────────────────────────────────────
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    setRefreshError(null);
+    try {
+      const res = await fetch("/api/animals", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAnimals(data.animals);
+      setStats(data.stats);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("[Refresh] Failed:", err);
+      setRefreshError("Gagal memuat data terbaru");
+      // Auto-clear error after 4 seconds
+      setTimeout(() => setRefreshError(null), 4000);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing]);
+
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterID, setFilterID] = useState("");
   const [filterJenis, setFilterJenis] = useState("");
@@ -292,6 +328,32 @@ export default function HomePageClient({ animals, stats }: Props) {
                 onChange={(e) => setFilterID(e.target.value)}
               />
             </div>
+            {/* Refresh Button */}
+            <button
+              id="refresh-data-btn"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Muat ulang data dari Google Sheets"
+              className={`relative p-2.5 rounded-xl transition-all duration-300 group ${
+                isRefreshing
+                  ? "bg-primary/10 cursor-wait"
+                  : "hover:bg-surface-container-high active:scale-90"
+              }`}
+            >
+              <span
+                className={`material-symbols-outlined text-primary-container transition-transform duration-500 ${
+                  isRefreshing ? "animate-spin" : "group-hover:rotate-45"
+                }`}
+              >
+                refresh
+              </span>
+              {/* Success ping indicator */}
+              {!isRefreshing && lastUpdated && (
+                <span className="absolute top-1 right-1 flex h-2 w-2">
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+              )}
+            </button>
             <button className="p-2 rounded-full hover:bg-surface-container-high transition-all">
               <span className="material-symbols-outlined text-primary-container">
                 notifications
@@ -299,6 +361,13 @@ export default function HomePageClient({ animals, stats }: Props) {
             </button>
           </div>
         </nav>
+        {/* Refresh error toast */}
+        {refreshError && (
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl shadow-lg animate-[slideDown_0.3s_ease-out] z-[60]">
+            <span className="material-symbols-outlined text-sm mr-1 align-middle">error</span>
+            {refreshError}
+          </div>
+        )}
       </header>
 
       {/* ── Layout: Sidebar + Main ── */}
@@ -406,6 +475,10 @@ export default function HomePageClient({ animals, stats }: Props) {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                   </span>
                   LIVE
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-on-surface-variant mb-4 ml-2">
+                  <span className="material-symbols-outlined text-xs">schedule</span>
+                  Terakhir diperbarui: {lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 </span>
                 <h1 className="font-headline text-5xl md:text-6xl font-black text-primary leading-tight mb-4">
                   Tagline <span className="italic text-secondary">Qurban</span>
