@@ -4,7 +4,54 @@
 // ============================================================
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+
+// ── Count-up animation hook ──────────────────────────────────
+function useCountUp(target: number, duration = 1200) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const startRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    startRef.current = null;
+    if (target === 0) {
+      setValue(0);
+      return;
+    }
+
+    function step(timestamp: number) {
+      if (!startRef.current) startRef.current = timestamp;
+      const elapsed = timestamp - startRef.current;
+      // ease-out cubic for a satisfying deceleration
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(step);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [target, duration]);
+
+  return value;
+}
+
+// ── Animated width hook (for progress bars) ──────────────────
+function useAnimatedWidth(targetPercent: number, delay = 200) {
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setWidth(targetPercent), delay);
+    return () => clearTimeout(timer);
+  }, [targetPercent, delay]);
+
+  return width;
+}
 import Link from "next/link";
 import type { Animal, AnimalStatus, SummaryStats } from "@/lib/types";
 
@@ -57,19 +104,37 @@ const statusCfg: Record<
   },
 };
 
-// Status → progress bar width (5 stages)
-const STATUS_WIDTH: Record<AnimalStatus, string> = {
-  Persiapan: "w-1/5",
-  Disembelih: "w-2/5",
-  Pengolahan: "w-3/5",
-  Distribusi: "w-4/5",
-  Selesai: "w-full",
+// Status → progress bar width % (5 stages)
+const STATUS_PERCENT: Record<AnimalStatus, number> = {
+  Persiapan: 20,
+  Disembelih: 40,
+  Pengolahan: 60,
+  Distribusi: 80,
+  Selesai: 100,
 };
 
-// Species → icon
-function speciesIcon(species: string) {
-  if (species === "Sapi") return "token";
-  return "pets";
+// Species → Material Symbol icon with distinct visual per type
+function SpeciesIcon({ species }: { species: string; className?: string }) {
+  // Map each animal to a visually distinct Material Symbols icon
+  const iconMap: Record<string, { icon: string; label: string }> = {
+    Sapi: { icon: "agriculture", label: "Sapi" },         // barn/farm → Sapi
+    Kambing: { icon: "landscape", label: "Kambing" },      // mountain → Kambing gunung
+    Domba: { icon: "cloud", label: "Domba" },              // cloud/wool → Domba
+  };
+  const { icon, label } = iconMap[species] ?? { icon: "pets", label: species };
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span
+        className="material-symbols-outlined text-primary text-2xl"
+        style={{ fontVariationSettings: '"FILL" 1' }}
+      >
+        {icon}
+      </span>
+      <span className="text-[9px] font-black text-primary uppercase tracking-wider">
+        {label}
+      </span>
+    </div>
+  );
 }
 
 // ── Card for one animal ───────────────────────────────────────
@@ -82,7 +147,8 @@ function AnimalCard({ animal }: { animal: Animal }) {
       "border border-outline-variant hover:border-primary hover:text-primary",
   };
   const isCompleted = animal.status === "Selesai";
-  const width = STATUS_WIDTH[animal.status] ?? "w-1/5";
+  const targetPercent = STATUS_PERCENT[animal.status] ?? 20;
+  const animatedWidth = useAnimatedWidth(targetPercent, 300);
 
   return (
     <div
@@ -102,9 +168,7 @@ function AnimalCard({ animal }: { animal: Animal }) {
                 : "bg-surface-container-low"
             }`}
           >
-            <span className="material-symbols-outlined text-primary text-3xl">
-              {speciesIcon(animal.species)}
-            </span>
+            <SpeciesIcon species={animal.species} className="text-primary" />
           </div>
           <div>
             <h4 className="font-bold text-lg text-primary">#{animal.id}</h4>
@@ -118,9 +182,10 @@ function AnimalCard({ animal }: { animal: Animal }) {
         <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
           <div className="flex-1 h-3 bg-surface-container-low rounded-full relative overflow-hidden">
             <div
-              className={`h-full rounded-full relative transition-all duration-700 ${
+              className={`h-full rounded-full relative transition-all duration-1000 ease-out ${
                 isCompleted ? "bg-primary" : "bg-secondary"
-              } ${width}`}
+              }`}
+              style={{ width: `${animatedWidth}%` }}
             >
               {!isCompleted && (
                 <div
@@ -162,7 +227,43 @@ interface Props {
   stats: SummaryStats;
 }
 
-export default function HomePageClient({ animals, stats }: Props) {
+export default function HomePageClient({ animals: initialAnimals, stats: initialStats }: Props) {
+  // ── Live data state (can be refreshed client-side) ──────────
+  const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
+  const [stats, setStats] = useState<SummaryStats>(initialStats);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+
+  // Keep in sync when server props change (e.g. on navigation)
+  useEffect(() => {
+    setAnimals(initialAnimals);
+    setStats(initialStats);
+  }, [initialAnimals, initialStats]);
+
+  // ── Refresh handler ─────────────────────────────────────────
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    setRefreshError(null);
+    try {
+      const res = await fetch("/api/animals", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAnimals(data.animals);
+      setStats(data.stats);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("[Refresh] Failed:", err);
+      setRefreshError("Gagal memuat data terbaru");
+      // Auto-clear error after 4 seconds
+      setTimeout(() => setRefreshError(null), 4000);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing]);
+
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterID, setFilterID] = useState("");
   const [filterJenis, setFilterJenis] = useState("");
@@ -227,6 +328,32 @@ export default function HomePageClient({ animals, stats }: Props) {
                 onChange={(e) => setFilterID(e.target.value)}
               />
             </div>
+            {/* Refresh Button */}
+            <button
+              id="refresh-data-btn"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title="Muat ulang data dari Google Sheets"
+              className={`relative p-2.5 rounded-xl transition-all duration-300 group ${
+                isRefreshing
+                  ? "bg-primary/10 cursor-wait"
+                  : "hover:bg-surface-container-high active:scale-90"
+              }`}
+            >
+              <span
+                className={`material-symbols-outlined text-primary-container transition-transform duration-500 ${
+                  isRefreshing ? "animate-spin" : "group-hover:rotate-45"
+                }`}
+              >
+                refresh
+              </span>
+              {/* Success ping indicator */}
+              {!isRefreshing && lastUpdated && (
+                <span className="absolute top-1 right-1 flex h-2 w-2">
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+              )}
+            </button>
             <button className="p-2 rounded-full hover:bg-surface-container-high transition-all">
               <span className="material-symbols-outlined text-primary-container">
                 notifications
@@ -234,6 +361,13 @@ export default function HomePageClient({ animals, stats }: Props) {
             </button>
           </div>
         </nav>
+        {/* Refresh error toast */}
+        {refreshError && (
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-4 py-2 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl shadow-lg animate-[slideDown_0.3s_ease-out] z-[60]">
+            <span className="material-symbols-outlined text-sm mr-1 align-middle">error</span>
+            {refreshError}
+          </div>
+        )}
       </header>
 
       {/* ── Layout: Sidebar + Main ── */}
@@ -249,6 +383,30 @@ export default function HomePageClient({ animals, stats }: Props) {
             </p>
           </div>
           <nav className="flex flex-col gap-1">
+            {/* Dashboard — show all */}
+            <button
+              onClick={resetFilters}
+              className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ml-4 mr-2 mb-1 ${
+                !filterStatus && !filterID && !filterJenis && !filterLokasi
+                  ? "bg-surface-container-lowest text-primary-container shadow-sm"
+                  : "text-on-surface/70 hover:translate-x-1 hover:bg-surface-container-lowest/50"
+              }`}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={
+                  !filterStatus && !filterID && !filterJenis && !filterLokasi
+                    ? { fontVariationSettings: '"FILL" 1' }
+                    : undefined
+                }
+              >
+                dashboard
+              </span>
+              <span>Dashboard</span>
+              <span className="ml-auto text-[10px] font-black text-on-surface-variant">
+                {animals.length}
+              </span>
+            </button>
             {(
               [
                 {
@@ -318,6 +476,10 @@ export default function HomePageClient({ animals, stats }: Props) {
                   </span>
                   LIVE
                 </span>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-on-surface-variant mb-4 ml-2">
+                  <span className="material-symbols-outlined text-xs">schedule</span>
+                  Terakhir diperbarui: {lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                </span>
                 <h1 className="font-headline text-5xl md:text-6xl font-black text-primary leading-tight mb-4">
                   Tagline <span className="italic text-secondary">Qurban</span>
                 </h1>
@@ -341,8 +503,8 @@ export default function HomePageClient({ animals, stats }: Props) {
             {/* Total Animals */}
             <div className="bg-surface-container-lowest p-8 rounded-2xl relative overflow-hidden arabesque-pattern">
               <div className="relative z-10">
-                <span className="text-secondary font-black text-4xl mb-1 block">
-                  {stats.totalAnimals.toLocaleString("id-ID")}
+                <span className="text-secondary font-black text-4xl mb-1 block tabular-nums">
+                  {useCountUp(stats.totalAnimals).toLocaleString("id-ID")}
                 </span>
                 <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">
                   Total Hewan
@@ -369,16 +531,16 @@ export default function HomePageClient({ animals, stats }: Props) {
             {/* Progress */}
             <div className="bg-primary-container p-8 rounded-2xl relative overflow-hidden">
               <div className="relative z-10 text-on-primary">
-                <span className="text-primary-fixed font-black text-4xl mb-1 block">
-                  {stats.progressPercent}%
+                <span className="text-primary-fixed font-black text-4xl mb-1 block tabular-nums">
+                  {useCountUp(stats.progressPercent)}%
                 </span>
                 <h3 className="text-sm font-bold opacity-70 uppercase tracking-widest">
                   Kemajuan Pelaksanaan
                 </h3>
                 <div className="mt-6 w-full h-2 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-secondary-container rounded-full transition-all duration-700"
-                    style={{ width: `${stats.progressPercent}%` }}
+                    className="h-full bg-secondary-container rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${useAnimatedWidth(stats.progressPercent, 400)}%` }}
                   />
                 </div>
               </div>
@@ -387,8 +549,8 @@ export default function HomePageClient({ animals, stats }: Props) {
             {/* Weight */}
             <div className="bg-secondary-container p-8 rounded-2xl relative overflow-hidden">
               <div className="relative z-10 text-on-secondary-container">
-                <span className="font-black text-4xl mb-1 block">
-                  {stats.totalWeightKg.toLocaleString("id-ID")} kg
+                <span className="font-black text-4xl mb-1 block tabular-nums">
+                  {useCountUp(stats.totalWeightKg).toLocaleString("id-ID")} kg
                 </span>
                 <h3 className="text-sm font-bold opacity-80 uppercase tracking-widest">
                   Estimasi Total Berat
