@@ -353,7 +353,7 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                 mosque
               </span>
               <span className="text-xs font-black text-primary uppercase tracking-widest">
-                Qurban 1447 H
+                QURTEK 1447H
               </span>
             </div>
           </div>
