@@ -318,7 +318,7 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
               </span>
               <input
                 className="bg-transparent border-none focus:outline-none text-sm font-medium w-48 ml-2 text-on-surface placeholder:text-on-surface-variant"
-                placeholder="Cari ID (misal #C101)"
+                placeholder="Cari ID (misal Sapi-1)"
                 type="text"
                 value={filterID}
                 onChange={(e) => setFilterID(e.target.value)}
@@ -622,7 +622,7 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                         </span>
                         <input
                           className="w-full bg-surface-container-low border-none rounded-xl py-3 pl-10 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-outline"
-                          placeholder="Contoh: C101"
+                          placeholder="Contoh: Sapi-1"
                           type="text"
                           value={filterID}
                           onChange={(e) => setFilterID(e.target.value)}
