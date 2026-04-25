@@ -152,21 +152,19 @@ function AnimalCard({ animal }: { animal: Animal }) {
 
   return (
     <div
-      className={`rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden ${
-        isCompleted
+      className={`rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden ${isCompleted
           ? "bg-primary-fixed/30 border border-primary/5"
           : "bg-surface-container-lowest hover:shadow-[0_12px_32px_rgba(55,45,23,0.08)]"
-      }`}
+        }`}
     >
       <div className="flex flex-col lg:flex-row lg:items-center gap-8">
         {/* Identity */}
         <div className="flex items-center gap-4 min-w-50">
           <div
-            className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${
-              isCompleted
+            className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${isCompleted
                 ? "bg-surface-container-lowest"
                 : "bg-surface-container-low"
-            }`}
+              }`}
           >
             <SpeciesIcon species={animal.species} className="text-primary" />
           </div>
@@ -182,16 +180,14 @@ function AnimalCard({ animal }: { animal: Animal }) {
         <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
           <div className="flex-1 h-3 bg-surface-container-low rounded-full relative overflow-hidden">
             <div
-              className={`h-full rounded-full relative transition-all duration-1000 ease-out ${
-                isCompleted ? "bg-primary" : "bg-secondary"
-              }`}
+              className={`h-full rounded-full relative transition-all duration-1000 ease-out ${isCompleted ? "bg-primary" : "bg-secondary"
+                }`}
               style={{ width: `${animatedWidth}%` }}
             >
               {!isCompleted && (
                 <div
-                  className={`absolute -right-2 -top-1 w-5 h-5 bg-secondary border-4 border-white rounded-full shadow-sm ${
-                    cfg.pulse ? "animate-pulse" : ""
-                  }`}
+                  className={`absolute -right-2 -top-1 w-5 h-5 bg-secondary border-4 border-white rounded-full shadow-sm ${cfg.pulse ? "animate-pulse" : ""
+                    }`}
                 />
               )}
             </div>
@@ -334,16 +330,14 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
               onClick={handleRefresh}
               disabled={isRefreshing}
               title="Muat ulang data dari Google Sheets"
-              className={`relative p-2.5 rounded-xl transition-all duration-300 group ${
-                isRefreshing
+              className={`relative p-2.5 rounded-xl transition-all duration-300 group ${isRefreshing
                   ? "bg-primary/10 cursor-wait"
                   : "hover:bg-surface-container-high active:scale-90"
-              }`}
+                }`}
             >
               <span
-                className={`material-symbols-outlined text-primary-container transition-transform duration-500 ${
-                  isRefreshing ? "animate-spin" : "group-hover:rotate-45"
-                }`}
+                className={`material-symbols-outlined text-primary-container transition-transform duration-500 ${isRefreshing ? "animate-spin" : "group-hover:rotate-45"
+                  }`}
               >
                 refresh
               </span>
@@ -354,11 +348,14 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                 </span>
               )}
             </button>
-            <button className="p-2 rounded-full hover:bg-surface-container-high transition-all">
-              <span className="material-symbols-outlined text-primary-container">
-                notifications
+            <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-primary-container/15 rounded-full">
+              <span className="material-symbols-outlined text-primary text-base" style={{ fontVariationSettings: '"FILL" 1' }}>
+                mosque
               </span>
-            </button>
+              <span className="text-xs font-black text-primary uppercase tracking-widest">
+                Qurban 1447 H
+              </span>
+            </div>
           </div>
         </nav>
         {/* Refresh error toast */}
@@ -386,11 +383,10 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
             {/* Dashboard — show all */}
             <button
               onClick={resetFilters}
-              className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ml-4 mr-2 mb-1 ${
-                !filterStatus && !filterID && !filterJenis && !filterLokasi
+              className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ml-4 mr-2 mb-1 ${!filterStatus && !filterID && !filterJenis && !filterLokasi
                   ? "bg-surface-container-lowest text-primary-container shadow-sm"
                   : "text-on-surface/70 hover:translate-x-1 hover:bg-surface-container-lowest/50"
-              }`}
+                }`}
             >
               <span
                 className="material-symbols-outlined"
@@ -437,11 +433,10 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                 <button
                   key={status}
                   onClick={() => setFilterStatus(isActive ? "" : status)}
-                  className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ${
-                    isActive
+                  className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ${isActive
                       ? "bg-surface-container-lowest text-primary-container shadow-sm ml-4 mr-2"
                       : "text-on-surface/70 ml-4 mr-2 hover:translate-x-1 hover:bg-surface-container-lowest/50"
-                  }`}
+                    }`}
                 >
                   <span
                     className="material-symbols-outlined"
@@ -588,11 +583,10 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                   onClick={() => setFilterOpen((v) => !v)}
                   aria-expanded={filterOpen}
                   aria-label="Toggle filter panel"
-                  className={`p-2 rounded-xl transition-all ${
-                    filterOpen
+                  className={`p-2 rounded-xl transition-all ${filterOpen
                       ? "bg-primary text-on-primary"
                       : "text-outline hover:text-primary hover:bg-surface-container-high"
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined">
                     {filterOpen ? "filter_list_off" : "tune"}
@@ -603,9 +597,8 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
 
             {/* ── Collapsible Filter Panel ── */}
             <div
-              className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                filterOpen ? "max-h-150 opacity-100" : "max-h-0 opacity-0"
-              }`}
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${filterOpen ? "max-h-150 opacity-100" : "max-h-0 opacity-0"
+                }`}
             >
               <div className="p-6 bg-surface-container-lowest rounded-2xl shadow-[0_8px_24px_rgba(55,45,23,0.04)] border border-primary/5">
                 <div className="flex flex-col gap-6">
