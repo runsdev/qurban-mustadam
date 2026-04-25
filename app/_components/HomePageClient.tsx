@@ -115,20 +115,33 @@ const STATUS_PERCENT: Record<AnimalStatus, number> = {
 
 // Species → Material Symbol icon with distinct visual per type
 function SpeciesIcon({ species }: { species: string; className?: string }) {
-  // Map each animal to a visually distinct Material Symbols icon
-  const iconMap: Record<string, { icon: string; label: string }> = {
-    Sapi: { icon: "agriculture", label: "Sapi" },         // barn/farm → Sapi
-    Kambing: { icon: "landscape", label: "Kambing" },      // mountain → Kambing gunung
-    Domba: { icon: "cloud", label: "Domba" },              // cloud/wool → Domba
+  const iconMap: Record<string, { src: string; label: string; fallbackIcon: string }> = {
+    Sapi: { src: "/images/icon-sapi.png", label: "Sapi", fallbackIcon: "agriculture" },
+    Kambing: { src: "/images/icon-kambing.png", label: "Kambing", fallbackIcon: "landscape" },
+    Domba: { src: "/images/icon-domba.png", label: "Domba", fallbackIcon: "cloud" },
   };
-  const { icon, label } = iconMap[species] ?? { icon: "pets", label: species };
+  const { src, label, fallbackIcon } = iconMap[species] ?? {
+    src: "", label: species, fallbackIcon: "pets"
+  };
+
   return (
     <div className="flex flex-col items-center gap-0.5">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={label}
+        className="w-10 h-10 object-contain"
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+          const fb = e.currentTarget.nextElementSibling;
+          if (fb) (fb as HTMLElement).style.display = "";
+        }}
+      />
       <span
         className="material-symbols-outlined text-primary text-2xl"
-        style={{ fontVariationSettings: '"FILL" 1' }}
+        style={{ display: "none", fontVariationSettings: '"FILL" 1' }}
       >
-        {icon}
+        {fallbackIcon}
       </span>
       <span className="text-[9px] font-black text-primary uppercase tracking-wider">
         {label}
@@ -153,8 +166,8 @@ function AnimalCard({ animal }: { animal: Animal }) {
   return (
     <div
       className={`rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden ${isCompleted
-          ? "bg-primary-fixed/30 border border-primary/5"
-          : "bg-surface-container-lowest hover:shadow-[0_12px_32px_rgba(55,45,23,0.08)]"
+        ? "bg-primary-fixed/30 border border-primary/5"
+        : "bg-surface-container-lowest hover:shadow-[0_12px_32px_rgba(55,45,23,0.08)]"
         }`}
     >
       <div className="flex flex-col lg:flex-row lg:items-center gap-8">
@@ -162,8 +175,8 @@ function AnimalCard({ animal }: { animal: Animal }) {
         <div className="flex items-center gap-4 min-w-50">
           <div
             className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${isCompleted
-                ? "bg-surface-container-lowest"
-                : "bg-surface-container-low"
+              ? "bg-surface-container-lowest"
+              : "bg-surface-container-low"
               }`}
           >
             <SpeciesIcon species={animal.species} className="text-primary" />
@@ -331,8 +344,8 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
               disabled={isRefreshing}
               title="Muat ulang data dari Google Sheets"
               className={`relative p-2.5 rounded-xl transition-all duration-300 group ${isRefreshing
-                  ? "bg-primary/10 cursor-wait"
-                  : "hover:bg-surface-container-high active:scale-90"
+                ? "bg-primary/10 cursor-wait"
+                : "hover:bg-surface-container-high active:scale-90"
                 }`}
             >
               <span
@@ -384,8 +397,8 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
             <button
               onClick={resetFilters}
               className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ml-4 mr-2 mb-1 ${!filterStatus && !filterID && !filterJenis && !filterLokasi
-                  ? "bg-surface-container-lowest text-primary-container shadow-sm"
-                  : "text-on-surface/70 hover:translate-x-1 hover:bg-surface-container-lowest/50"
+                ? "bg-surface-container-lowest text-primary-container shadow-sm"
+                : "text-on-surface/70 hover:translate-x-1 hover:bg-surface-container-lowest/50"
                 }`}
             >
               <span
@@ -434,8 +447,8 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                   key={status}
                   onClick={() => setFilterStatus(isActive ? "" : status)}
                   className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ${isActive
-                      ? "bg-surface-container-lowest text-primary-container shadow-sm ml-4 mr-2"
-                      : "text-on-surface/70 ml-4 mr-2 hover:translate-x-1 hover:bg-surface-container-lowest/50"
+                    ? "bg-surface-container-lowest text-primary-container shadow-sm ml-4 mr-2"
+                    : "text-on-surface/70 ml-4 mr-2 hover:translate-x-1 hover:bg-surface-container-lowest/50"
                     }`}
                 >
                   <span
@@ -584,8 +597,8 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                   aria-expanded={filterOpen}
                   aria-label="Toggle filter panel"
                   className={`p-2 rounded-xl transition-all ${filterOpen
-                      ? "bg-primary text-on-primary"
-                      : "text-outline hover:text-primary hover:bg-surface-container-high"
+                    ? "bg-primary text-on-primary"
+                    : "text-outline hover:text-primary hover:bg-surface-container-high"
                     }`}
                 >
                   <span className="material-symbols-outlined">
