@@ -54,6 +54,7 @@ function useAnimatedWidth(targetPercent: number, delay = 200) {
 }
 import Link from "next/link";
 import type { Animal, AnimalStatus, SummaryStats } from "@/lib/types";
+import AboutSection from "./AboutSection";
 
 // ── Per-status display config ─────────────────────────────────
 const statusCfg: Record<
@@ -115,20 +116,33 @@ const STATUS_PERCENT: Record<AnimalStatus, number> = {
 
 // Species → Material Symbol icon with distinct visual per type
 function SpeciesIcon({ species }: { species: string; className?: string }) {
-  // Map each animal to a visually distinct Material Symbols icon
-  const iconMap: Record<string, { icon: string; label: string }> = {
-    Sapi: { icon: "agriculture", label: "Sapi" },         // barn/farm → Sapi
-    Kambing: { icon: "landscape", label: "Kambing" },      // mountain → Kambing gunung
-    Domba: { icon: "cloud", label: "Domba" },              // cloud/wool → Domba
+  const iconMap: Record<string, { src: string; label: string; fallbackIcon: string }> = {
+    Sapi: { src: "/images/icon-sapi.png", label: "Sapi", fallbackIcon: "agriculture" },
+    Kambing: { src: "/images/icon-kambing.png", label: "Kambing", fallbackIcon: "landscape" },
+    Domba: { src: "/images/icon-domba.png", label: "Domba", fallbackIcon: "cloud" },
   };
-  const { icon, label } = iconMap[species] ?? { icon: "pets", label: species };
+  const { src, label, fallbackIcon } = iconMap[species] ?? {
+    src: "", label: species, fallbackIcon: "pets"
+  };
+
   return (
     <div className="flex flex-col items-center gap-0.5">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={label}
+        className="w-10 h-10 object-contain"
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+          const fb = e.currentTarget.nextElementSibling;
+          if (fb) (fb as HTMLElement).style.display = "";
+        }}
+      />
       <span
         className="material-symbols-outlined text-primary text-2xl"
-        style={{ fontVariationSettings: '"FILL" 1' }}
+        style={{ display: "none", fontVariationSettings: '"FILL" 1' }}
       >
-        {icon}
+        {fallbackIcon}
       </span>
       <span className="text-[9px] font-black text-primary uppercase tracking-wider">
         {label}
@@ -153,8 +167,8 @@ function AnimalCard({ animal }: { animal: Animal }) {
   return (
     <div
       className={`rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 relative overflow-hidden ${isCompleted
-          ? "bg-primary-fixed/30 border border-primary/5"
-          : "bg-surface-container-lowest hover:shadow-[0_12px_32px_rgba(55,45,23,0.08)]"
+        ? "bg-primary-fixed/30 border border-primary/5"
+        : "bg-surface-container-lowest hover:shadow-[0_12px_32px_rgba(55,45,23,0.08)]"
         }`}
     >
       <div className="flex flex-col lg:flex-row lg:items-center gap-8">
@@ -162,8 +176,8 @@ function AnimalCard({ animal }: { animal: Animal }) {
         <div className="flex items-center gap-4 min-w-50">
           <div
             className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${isCompleted
-                ? "bg-surface-container-lowest"
-                : "bg-surface-container-low"
+              ? "bg-surface-container-lowest"
+              : "bg-surface-container-low"
               }`}
           >
             <SpeciesIcon species={animal.species} className="text-primary" />
@@ -260,6 +274,14 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
     }
   }, [isRefreshing]);
 
+  const [activeView, setActiveView] = useState<"laporan" | "tentang">("laporan");
+
+  // ── Hoisted animation hooks (must always run, never inside conditional) ──
+  const animatedTotalAnimals = useCountUp(stats.totalAnimals);
+  const animatedProgressPercent = useCountUp(stats.progressPercent);
+  const animatedTotalWeight = useCountUp(stats.totalWeightKg);
+  const animatedProgressWidth = useAnimatedWidth(stats.progressPercent, 400);
+
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterID, setFilterID] = useState("");
   const [filterJenis, setFilterJenis] = useState("");
@@ -331,8 +353,8 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
               disabled={isRefreshing}
               title="Muat ulang data dari Google Sheets"
               className={`relative p-2.5 rounded-xl transition-all duration-300 group ${isRefreshing
-                  ? "bg-primary/10 cursor-wait"
-                  : "hover:bg-surface-container-high active:scale-90"
+                ? "bg-primary/10 cursor-wait"
+                : "hover:bg-surface-container-high active:scale-90"
                 }`}
             >
               <span
@@ -380,10 +402,10 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
             </p>
           </div>
           <nav className="flex flex-col gap-1">
-            {/* Dashboard — show all */}
+            {/* Tentang Qurban */}
             <button
-              onClick={resetFilters}
-              className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ml-4 mr-2 mb-1 ${!filterStatus && !filterID && !filterJenis && !filterLokasi
+              onClick={() => setActiveView(activeView === "tentang" ? "laporan" : "tentang")}
+              className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ml-4 mr-2 mb-1 ${activeView === "tentang"
                   ? "bg-surface-container-lowest text-primary-container shadow-sm"
                   : "text-on-surface/70 hover:translate-x-1 hover:bg-surface-container-lowest/50"
                 }`}
@@ -391,7 +413,28 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
               <span
                 className="material-symbols-outlined"
                 style={
-                  !filterStatus && !filterID && !filterJenis && !filterLokasi
+                  activeView === "tentang"
+                    ? { fontVariationSettings: '"FILL" 1' }
+                    : undefined
+                }
+              >
+                info
+              </span>
+              <span>Tentang</span>
+            </button>
+            <div className="mx-4 my-1 border-t border-outline-variant/30" />
+            {/* Dashboard — show all */}
+            <button
+              onClick={() => { resetFilters(); setActiveView("laporan"); }}
+              className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ml-4 mr-2 mb-1 ${activeView === "laporan" && !filterStatus && !filterID && !filterJenis && !filterLokasi
+                ? "bg-surface-container-lowest text-primary-container shadow-sm"
+                : "text-on-surface/70 hover:translate-x-1 hover:bg-surface-container-lowest/50"
+                }`}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={
+                  activeView === "laporan" && !filterStatus && !filterID && !filterJenis && !filterLokasi
                     ? { fontVariationSettings: '"FILL" 1' }
                     : undefined
                 }
@@ -434,8 +477,8 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                   key={status}
                   onClick={() => setFilterStatus(isActive ? "" : status)}
                   className={`flex items-center gap-3 text-sm font-semibold px-4 py-3 rounded-xl transition-all text-left ${isActive
-                      ? "bg-surface-container-lowest text-primary-container shadow-sm ml-4 mr-2"
-                      : "text-on-surface/70 ml-4 mr-2 hover:translate-x-1 hover:bg-surface-container-lowest/50"
+                    ? "bg-surface-container-lowest text-primary-container shadow-sm ml-4 mr-2"
+                    : "text-on-surface/70 ml-4 mr-2 hover:translate-x-1 hover:bg-surface-container-lowest/50"
                     }`}
                 >
                   <span
@@ -483,277 +526,296 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                 </p>
               </div>
               <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-2xl">
-                <button className="px-6 py-2 bg-surface-container-lowest text-primary font-bold rounded-xl shadow-sm text-sm">
+                <button
+                  onClick={() => setActiveView("laporan")}
+                  className={`px-6 py-2 rounded-xl font-bold text-sm transition-all duration-300 ${activeView === "laporan"
+                      ? "bg-surface-container-lowest text-primary shadow-sm"
+                      : "text-on-surface-variant hover:text-primary"
+                    }`}
+                >
                   Laporan Langsung
                 </button>
-                <button className="px-6 py-2 text-on-surface-variant font-semibold text-sm hover:text-primary transition-colors">
+                <button
+                  onClick={() => setActiveView("tentang")}
+                  className={`px-6 py-2 rounded-xl font-bold text-sm transition-all duration-300 ${activeView === "tentang"
+                      ? "bg-surface-container-lowest text-primary shadow-sm"
+                      : "text-on-surface-variant hover:text-primary"
+                    }`}
+                >
                   Tentang Qurban
                 </button>
               </div>
             </div>
           </section>
 
-          {/* ── Quick Stats Bento Grid ── */}
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-            {/* Total Animals */}
-            <div className="bg-surface-container-lowest p-8 rounded-2xl relative overflow-hidden arabesque-pattern">
-              <div className="relative z-10">
-                <span className="text-secondary font-black text-4xl mb-1 block tabular-nums">
-                  {useCountUp(stats.totalAnimals).toLocaleString("id-ID")}
-                </span>
-                <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">
-                  Total Hewan
-                </h3>
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {["Sapi", "Kambing", "Domba"].map((sp) => {
-                    const count = animals.filter(
-                      (a) => a.species === sp,
-                    ).length;
-                    if (!count) return null;
-                    return (
-                      <span
-                        key={sp}
-                        className="text-xs font-semibold px-2 py-1 bg-surface-container-low rounded-lg"
-                      >
-                        {count} {sp}
+          {activeView === "tentang" ? (
+            /* ── About Section ── */
+            <AboutSection />
+          ) : (
+            <>
+              {/* ── Quick Stats Bento Grid ── */}
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                {/* Total Animals */}
+                <div className="bg-surface-container-lowest p-8 rounded-2xl relative overflow-hidden arabesque-pattern">
+                  <div className="relative z-10">
+                    <span className="text-secondary font-black text-4xl mb-1 block tabular-nums">
+                      {animatedTotalAnimals.toLocaleString("id-ID")}
+                    </span>
+                    <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">
+                      Total Hewan
+                    </h3>
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {["Sapi", "Kambing", "Domba"].map((sp) => {
+                        const count = animals.filter(
+                          (a) => a.species === sp,
+                        ).length;
+                        if (!count) return null;
+                        return (
+                          <span
+                            key={sp}
+                            className="text-xs font-semibold px-2 py-1 bg-surface-container-low rounded-lg"
+                          >
+                            {count} {sp}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress */}
+                <div className="bg-primary-container p-8 rounded-2xl relative overflow-hidden">
+                  <div className="relative z-10 text-on-primary">
+                    <span className="text-primary-fixed font-black text-4xl mb-1 block tabular-nums">
+                      {animatedProgressPercent}%
+                    </span>
+                    <h3 className="text-sm font-bold opacity-70 uppercase tracking-widest">
+                      Kemajuan Pelaksanaan
+                    </h3>
+                    <div className="mt-6 w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-secondary-container rounded-full transition-all duration-1000 ease-out"
+                        style={{ width: `${animatedProgressWidth}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Weight */}
+                <div className="bg-secondary-container p-8 rounded-2xl relative overflow-hidden">
+                  <div className="relative z-10 text-on-secondary-container">
+                    <span className="font-black text-4xl mb-1 block tabular-nums">
+                      {animatedTotalWeight.toLocaleString("id-ID")} kg
+                    </span>
+                    <h3 className="text-sm font-bold opacity-80 uppercase tracking-widest">
+                      Estimasi Total Berat
+                    </h3>
+                    <div className="mt-6 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-xl">
+                        scale
                       </span>
-                    );
-                  })}
+                      <span className="text-xs font-bold">
+                        {stats.completedAnimals} hewan selesai distribusi
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </section>
 
-            {/* Progress */}
-            <div className="bg-primary-container p-8 rounded-2xl relative overflow-hidden">
-              <div className="relative z-10 text-on-primary">
-                <span className="text-primary-fixed font-black text-4xl mb-1 block tabular-nums">
-                  {useCountUp(stats.progressPercent)}%
-                </span>
-                <h3 className="text-sm font-bold opacity-70 uppercase tracking-widest">
-                  Kemajuan Pelaksanaan
-                </h3>
-                <div className="mt-6 w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-secondary-container rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: `${useAnimatedWidth(stats.progressPercent, 400)}%` }}
-                  />
+              {/* ── Status Tracker List ── */}
+              <section className="space-y-6">
+                {/* Section header */}
+                <div className="flex items-center justify-between px-2">
+                  <h2 className="font-headline text-2xl font-bold text-primary">
+                    Pelacak Status
+                    {(filterID || filterJenis || filterStatus || filterLokasi) && (
+                      <span className="ml-3 text-sm font-body font-semibold text-secondary">
+                        {filtered.length} hasil
+                      </span>
+                    )}
+                  </h2>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-on-surface-variant">
+                      Urutkan:{" "}
+                      <span className="text-primary font-bold">Terbaru</span>
+                    </span>
+                    <button
+                      onClick={() => setFilterOpen((v) => !v)}
+                      aria-expanded={filterOpen}
+                      aria-label="Toggle filter panel"
+                      className={`p-2 rounded-xl transition-all ${filterOpen
+                        ? "bg-primary text-on-primary"
+                        : "text-outline hover:text-primary hover:bg-surface-container-high"
+                        }`}
+                    >
+                      <span className="material-symbols-outlined">
+                        {filterOpen ? "filter_list_off" : "tune"}
+                      </span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Weight */}
-            <div className="bg-secondary-container p-8 rounded-2xl relative overflow-hidden">
-              <div className="relative z-10 text-on-secondary-container">
-                <span className="font-black text-4xl mb-1 block tabular-nums">
-                  {useCountUp(stats.totalWeightKg).toLocaleString("id-ID")} kg
-                </span>
-                <h3 className="text-sm font-bold opacity-80 uppercase tracking-widest">
-                  Estimasi Total Berat
-                </h3>
-                <div className="mt-6 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-xl">
-                    scale
-                  </span>
-                  <span className="text-xs font-bold">
-                    {stats.completedAnimals} hewan selesai distribusi
-                  </span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── Status Tracker List ── */}
-          <section className="space-y-6">
-            {/* Section header */}
-            <div className="flex items-center justify-between px-2">
-              <h2 className="font-headline text-2xl font-bold text-primary">
-                Pelacak Status
-                {(filterID || filterJenis || filterStatus || filterLokasi) && (
-                  <span className="ml-3 text-sm font-body font-semibold text-secondary">
-                    {filtered.length} hasil
-                  </span>
-                )}
-              </h2>
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-on-surface-variant">
-                  Urutkan:{" "}
-                  <span className="text-primary font-bold">Terbaru</span>
-                </span>
-                <button
-                  onClick={() => setFilterOpen((v) => !v)}
-                  aria-expanded={filterOpen}
-                  aria-label="Toggle filter panel"
-                  className={`p-2 rounded-xl transition-all ${filterOpen
-                      ? "bg-primary text-on-primary"
-                      : "text-outline hover:text-primary hover:bg-surface-container-high"
+                {/* ── Collapsible Filter Panel ── */}
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${filterOpen ? "max-h-150 opacity-100" : "max-h-0 opacity-0"
                     }`}
                 >
-                  <span className="material-symbols-outlined">
-                    {filterOpen ? "filter_list_off" : "tune"}
-                  </span>
-                </button>
-              </div>
-            </div>
+                  <div className="p-6 bg-surface-container-lowest rounded-2xl shadow-[0_8px_24px_rgba(55,45,23,0.04)] border border-primary/5">
+                    <div className="flex flex-col gap-6">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-xl">
+                          filter_list
+                        </span>
+                        <h3 className="font-headline font-bold text-primary">
+                          Filter Pencarian
+                        </h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Animal ID */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant ml-1">
+                            ID Hewan
+                          </label>
+                          <div className="relative">
+                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">
+                              tag
+                            </span>
+                            <input
+                              className="w-full bg-surface-container-low border-none rounded-xl py-3 pl-10 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-outline"
+                              placeholder="Contoh: Sapi-1"
+                              type="text"
+                              value={filterID}
+                              onChange={(e) => setFilterID(e.target.value)}
+                            />
+                          </div>
+                        </div>
 
-            {/* ── Collapsible Filter Panel ── */}
-            <div
-              className={`overflow-hidden transition-all duration-300 ease-in-out ${filterOpen ? "max-h-150 opacity-100" : "max-h-0 opacity-0"
-                }`}
-            >
-              <div className="p-6 bg-surface-container-lowest rounded-2xl shadow-[0_8px_24px_rgba(55,45,23,0.04)] border border-primary/5">
-                <div className="flex flex-col gap-6">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-xl">
-                      filter_list
+                        {/* Animal Type */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant ml-1">
+                            Jenis Hewan
+                          </label>
+                          <div className="relative">
+                            <select
+                              className="w-full appearance-none bg-surface-container-low border-none rounded-xl py-3 px-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                              value={filterJenis}
+                              onChange={(e) => setFilterJenis(e.target.value)}
+                            >
+                              <option value="">Semua Jenis</option>
+                              {speciesList.map((sp) => (
+                                <option key={sp} value={sp}>
+                                  {sp}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">
+                              expand_more
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant ml-1">
+                            Status
+                          </label>
+                          <div className="relative">
+                            <select
+                              className="w-full appearance-none bg-surface-container-low border-none rounded-xl py-3 px-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                              value={filterStatus}
+                              onChange={(e) => setFilterStatus(e.target.value)}
+                            >
+                              <option value="">Semua Status</option>
+                              <option value="Persiapan">Sedang Diproses</option>
+                              <option value="Disembelih">Sudah Disembelih</option>
+                              <option value="Pengolahan">Pengolahan</option>
+                              <option value="Distribusi">Distribusi</option>
+                              <option value="Selesai">Selesai</option>
+                            </select>
+                            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">
+                              expand_more
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Location */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant ml-1">
+                            Lokasi
+                          </label>
+                          <div className="relative">
+                            <select
+                              className="w-full appearance-none bg-surface-container-low border-none rounded-xl py-3 px-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
+                              value={filterLokasi}
+                              onChange={(e) => setFilterLokasi(e.target.value)}
+                            >
+                              <option value="">Semua Lokasi</option>
+                              {locationList.map((loc) => (
+                                <option key={loc} value={loc}>
+                                  {loc}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">
+                              expand_more
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-surface-variant/50">
+                        <button
+                          onClick={resetFilters}
+                          className="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors"
+                        >
+                          Reset Filter
+                        </button>
+                        <button
+                          onClick={() => setFilterOpen(false)}
+                          className="flex items-center gap-2 px-6 py-2 bg-primary text-on-primary rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-primary-container transition-all active:scale-95 shadow-sm"
+                        >
+                          <span className="material-symbols-outlined text-sm">
+                            check
+                          </span>
+                          Terapkan Filter
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Animal Cards ── */}
+                {filtered.length === 0 ? (
+                  <div className="py-24 flex flex-col items-center gap-4 text-center">
+                    <span className="material-symbols-outlined text-5xl text-outline">
+                      search_off
                     </span>
-                    <h3 className="font-headline font-bold text-primary">
-                      Filter Pencarian
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Animal ID */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant ml-1">
-                        ID Hewan
-                      </label>
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-lg">
-                          tag
-                        </span>
-                        <input
-                          className="w-full bg-surface-container-low border-none rounded-xl py-3 pl-10 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-outline"
-                          placeholder="Contoh: Sapi-1"
-                          type="text"
-                          value={filterID}
-                          onChange={(e) => setFilterID(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Animal Type */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant ml-1">
-                        Jenis Hewan
-                      </label>
-                      <div className="relative">
-                        <select
-                          className="w-full appearance-none bg-surface-container-low border-none rounded-xl py-3 px-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
-                          value={filterJenis}
-                          onChange={(e) => setFilterJenis(e.target.value)}
-                        >
-                          <option value="">Semua Jenis</option>
-                          {speciesList.map((sp) => (
-                            <option key={sp} value={sp}>
-                              {sp}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">
-                          expand_more
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Status */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant ml-1">
-                        Status
-                      </label>
-                      <div className="relative">
-                        <select
-                          className="w-full appearance-none bg-surface-container-low border-none rounded-xl py-3 px-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
-                          value={filterStatus}
-                          onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                          <option value="">Semua Status</option>
-                          <option value="Persiapan">Sedang Diproses</option>
-                          <option value="Disembelih">Sudah Disembelih</option>
-                          <option value="Pengolahan">Pengolahan</option>
-                          <option value="Distribusi">Distribusi</option>
-                          <option value="Selesai">Selesai</option>
-                        </select>
-                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">
-                          expand_more
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Location */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant ml-1">
-                        Lokasi
-                      </label>
-                      <div className="relative">
-                        <select
-                          className="w-full appearance-none bg-surface-container-low border-none rounded-xl py-3 px-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface"
-                          value={filterLokasi}
-                          onChange={(e) => setFilterLokasi(e.target.value)}
-                        >
-                          <option value="">Semua Lokasi</option>
-                          {locationList.map((loc) => (
-                            <option key={loc} value={loc}>
-                              {loc}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">
-                          expand_more
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-between pt-2 border-t border-surface-variant/50">
+                    <p className="text-on-surface-variant font-semibold">
+                      Tidak ada hewan yang cocok dengan filter ini.
+                    </p>
                     <button
                       onClick={resetFilters}
-                      className="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors"
+                      className="text-sm font-bold text-primary hover:underline"
                     >
                       Reset Filter
                     </button>
-                    <button
-                      onClick={() => setFilterOpen(false)}
-                      className="flex items-center gap-2 px-6 py-2 bg-primary text-on-primary rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-primary-container transition-all active:scale-95 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-sm">
-                        check
-                      </span>
-                      Terapkan Filter
-                    </button>
                   </div>
-                </div>
-              </div>
-            </div>
+                ) : (
+                  filtered.map((animal) => (
+                    <AnimalCard key={animal.id} animal={animal} />
+                  ))
+                )}
+              </section>
 
-            {/* ── Animal Cards ── */}
-            {filtered.length === 0 ? (
-              <div className="py-24 flex flex-col items-center gap-4 text-center">
-                <span className="material-symbols-outlined text-5xl text-outline">
-                  search_off
-                </span>
-                <p className="text-on-surface-variant font-semibold">
-                  Tidak ada hewan yang cocok dengan filter ini.
-                </p>
-                <button
-                  onClick={resetFilters}
-                  className="text-sm font-bold text-primary hover:underline"
-                >
-                  Reset Filter
+              {/* ── Load More placeholder ── */}
+              <div className="mt-12 mb-24 lg:mb-0 flex justify-center">
+                <button className="px-12 py-4 bg-surface-container-low hover:bg-surface-container-high text-primary font-black uppercase tracking-widest text-xs rounded-full transition-all">
+                  Muat Lebih Banyak Catatan
                 </button>
               </div>
-            ) : (
-              filtered.map((animal) => (
-                <AnimalCard key={animal.id} animal={animal} />
-              ))
-            )}
-          </section>
-
-          {/* ── Load More placeholder ── */}
-          <div className="mt-12 mb-24 lg:mb-0 flex justify-center">
-            <button className="px-12 py-4 bg-surface-container-low hover:bg-surface-container-high text-primary font-black uppercase tracking-widest text-xs rounded-full transition-all">
-              Muat Lebih Banyak Catatan
-            </button>
-          </div>
+            </>
+          )}
         </main>
       </div>
 
