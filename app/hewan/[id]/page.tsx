@@ -182,11 +182,15 @@ export default async function HewanDetailPage({
                 share
               </span>
             </button>
-            <button className="p-2 rounded-full hover:bg-surface-container-high transition-all">
-              <span className="material-symbols-outlined text-primary-container">
-                notifications
+            <Link
+              href="/"
+              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container/15 rounded-full text-xs font-black text-primary uppercase tracking-widest hover:bg-primary-container/25 transition-all"
+            >
+              <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: '"FILL" 1' }}>
+                mosque
               </span>
-            </button>
+              Qurban 1447 H
+            </Link>
           </div>
         </nav>
       </header>
