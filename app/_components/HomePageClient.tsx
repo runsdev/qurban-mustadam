@@ -507,17 +507,19 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
           <section className="mb-12 relative">
             <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
               <div className="max-w-2xl">
-                <span className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-bold text-xs uppercase tracking-widest mb-4">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-bold text-xs uppercase tracking-widest">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                    </span>
+                    LIVE
                   </span>
-                  LIVE
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-on-surface-variant mb-4 ml-2">
-                  <span className="material-symbols-outlined text-xs">schedule</span>
-                  Terakhir diperbarui: {lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                </span>
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-on-surface-variant">
+                    <span className="material-symbols-outlined text-xs">schedule</span>
+                    Terakhir diperbarui: {lastUpdated.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </span>
+                </div>
                 <h1 className="font-headline text-5xl md:text-6xl font-black text-primary leading-tight mb-4">
                   Tagline <span className="italic text-secondary">Qurban</span>
                 </h1>
@@ -554,17 +556,17 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
           ) : (
             <>
               {/* ── Quick Stats Bento Grid ── */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+              <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 items-stretch">
                 {/* Total Animals */}
-                <div className="bg-surface-container-lowest p-8 rounded-2xl relative overflow-hidden arabesque-pattern">
-                  <div className="relative z-10">
+                <div className="bg-surface-container-lowest p-8 rounded-2xl relative overflow-hidden arabesque-pattern flex flex-col">
+                  <div className="relative z-10 flex flex-col flex-1">
                     <span className="text-secondary font-black text-4xl mb-1 block tabular-nums">
                       {animatedTotalAnimals.toLocaleString("id-ID")}
                     </span>
                     <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-widest">
                       Total Hewan
                     </h3>
-                    <div className="mt-6 flex flex-wrap gap-2">
+                    <div className="mt-auto pt-6 flex flex-wrap gap-2">
                       {["Sapi", "Kambing", "Domba"].map((sp) => {
                         const count = animals.filter(
                           (a) => a.species === sp,
@@ -584,15 +586,15 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                 </div>
 
                 {/* Progress */}
-                <div className="bg-primary-container p-8 rounded-2xl relative overflow-hidden">
-                  <div className="relative z-10 text-on-primary">
+                <div className="bg-primary-container p-8 rounded-2xl relative overflow-hidden flex flex-col">
+                  <div className="relative z-10 text-on-primary flex flex-col flex-1">
                     <span className="text-primary-fixed font-black text-4xl mb-1 block tabular-nums">
                       {animatedProgressPercent}%
                     </span>
                     <h3 className="text-sm font-bold opacity-70 uppercase tracking-widest">
                       Kemajuan Pelaksanaan
                     </h3>
-                    <div className="mt-6 w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="mt-auto pt-6 w-full h-2 bg-white/10 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-secondary-container rounded-full transition-all duration-1000 ease-out"
                         style={{ width: `${animatedProgressWidth}%` }}
@@ -602,15 +604,15 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                 </div>
 
                 {/* Weight */}
-                <div className="bg-secondary-container p-8 rounded-2xl relative overflow-hidden">
-                  <div className="relative z-10 text-on-secondary-container">
+                <div className="bg-secondary-container p-8 rounded-2xl relative overflow-hidden flex flex-col">
+                  <div className="relative z-10 text-on-secondary-container flex flex-col flex-1">
                     <span className="font-black text-4xl mb-1 block tabular-nums">
                       {animatedTotalWeight.toLocaleString("id-ID")} kg
                     </span>
                     <h3 className="text-sm font-bold opacity-80 uppercase tracking-widest">
                       Estimasi Total Berat
                     </h3>
-                    <div className="mt-6 flex items-center gap-2">
+                    <div className="mt-auto pt-6 flex items-center gap-2">
                       <span className="material-symbols-outlined text-xl">
                         scale
                       </span>

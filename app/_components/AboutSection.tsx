@@ -1,5 +1,5 @@
 // ============================================================
-// About Section – "Tentang Qurban Mustadam"
+// About Section – "Tentang QURTEK"
 // Three-part informational section: Vision, Dalil, Technical USP
 // ============================================================
 "use client";
@@ -181,7 +181,7 @@ export default function AboutSection() {
             {/* Right: Body text */}
             <div className="lg:col-span-3 space-y-6">
               <p className="text-lg text-on-surface leading-relaxed">
-                <span className="font-bold text-primary">Qurban Mustadam</span>{" "}
+                <span className="font-bold text-primary">QURTEK</span>{" "}
                 hadir sebagai jembatan bagi civitas akademika FT UGM dan
                 masyarakat umum untuk menunaikan ibadah Qurban dengan sistem
                 yang{" "}
@@ -321,7 +321,7 @@ export default function AboutSection() {
               <p className="text-base text-on-surface-variant leading-relaxed">
                 Diselenggarakan oleh Fakultas Teknik UGM, kami menerapkan
                 pendekatan teknis dan manajemen profesional yang membedakan
-                Qurban Mustadam dari panitia qurban pada umumnya.
+                QURTEK dari panitia qurban pada umumnya.
               </p>
             </div>
             {/* Decorative badge */}
