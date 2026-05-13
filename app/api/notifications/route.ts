@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import webpush from 'web-push';
+import { getPushSubscriptionsByToken } from '@/lib/sheets';
 
 // VAPID keys from environment variables
 const vapidKeys = {
@@ -14,26 +15,35 @@ webpush.setVapidDetails(
   vapidKeys.privateKey
 );
 
-// In-memory store for subscriptions (in production, use a database)
-let subscriptions: any[] = [];
-
 export async function POST(request: Request) {
   try {
-    const { token } = await request.json();
-    const subscription = await request.json();
+    const { token, title, body } = await request.json();
 
-    // Store subscription
-    subscriptions.push({ token, subscription });
-    console.log('Subscription stored:', { token, subscription });
+    // Validate required fields
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Token is required' },
+        { status: 400 }
+      );
+    }
 
-    // Send a test notification
+    // Get subscriptions for this specific token (animal ID)
+    const subscriptions = await getPushSubscriptionsByToken(token);
+
+    if (subscriptions.length === 0) {
+      return NextResponse.json(
+        { error: 'No subscriptions found for this token' },
+        { status: 404 }
+      );
+    }
+
+    // Send notification to all subscriptions for this token
     const payload = JSON.stringify({
-      title: 'Notifikasi Qurban Tek',
-      body: 'Ini adalah notifikasi tes dari sistem Qurban Tek.',
+      title: title || 'Notifikasi Qurban Tek',
+      body: body || 'Anda memiliki notifikasi baru.',
       icon: '/logo192.png', // You may want to add a logo
     });
 
-    // Send to all subscriptions (in production, you'd filter by token/user)
     const promises = subscriptions.map(({ subscription }) => 
       webpush.sendNotification(subscription, payload)
     );
@@ -42,7 +52,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Notification sent to all subscribers' 
+      message: `Notification sent to ${subscriptions.length} subscriber(s)` 
     });
   } catch (error) {
     console.error('Error sending notification:', error);

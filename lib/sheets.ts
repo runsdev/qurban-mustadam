@@ -262,3 +262,21 @@ export async function getPushSubscriptions(): Promise<PushSubscription[]> {
     return [];
   }
 }
+
+// ── Get push subscriptions by token (animal ID) ─────────────────────
+export async function getPushSubscriptionsByToken(token: string): Promise<PushSubscription[]> {
+  if (!SPREADSHEET_ID) {
+    console.warn(
+      "[sheets] GOOGLE_SPREADSHEET_ID is not set — returning empty subscriptions.",
+    );
+    return [];
+  }
+
+  try {
+    const allSubscriptions = await getPushSubscriptions();
+    return allSubscriptions.filter((sub) => sub.token === token);
+  } catch (error) {
+    console.error("[sheets] Failed to get push subscriptions by token:", error);
+    return [];
+  }
+}

@@ -218,10 +218,19 @@ export default async function HewanDetailPage({
                 #{animal.id}
               </h1>
 
-              {/* Animal name */}
-              <h2 className="text-3xl md:text-4xl font-headline italic text-on-surface-variant">
-                {animal.name}
-              </h2>
+               {/* Animal name */}
+               <h2 className="text-3xl md:text-4xl font-headline italic text-on-surface-variant">
+                 {animal.name}
+               </h2>
+
+               {/* Activate Notifications Button */}
+               <a
+                 href={`/notification.html?token=${animal.id}&vapidKey=${process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}`}
+                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-fixed text-on-primary-fixed-variant font-bold text-xs uppercase tracking-widest"
+               >
+                 <span className="material-symbols-outlined">notifications</span>
+                 Aktifkan Notifikasi untuk Hewan Ini
+               </a>
             </div>
 
             {/* Right: Animal photo */}
