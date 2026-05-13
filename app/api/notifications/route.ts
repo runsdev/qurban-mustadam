@@ -4,16 +4,18 @@ import { getPushSubscriptionsByToken } from '@/lib/sheets';
 
 // VAPID keys from environment variables
 const vapidKeys = {
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-  privateKey: process.env.VAPID_PRIVATE_KEY
+  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
+  privateKey: process.env.VAPID_PRIVATE_KEY ?? ''
 };
 
-// Set VAPID details
-webpush.setVapidDetails(
-  'mailto:admin@qurbantek.vercel.app',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+// Set VAPID details only if keys are available
+if (vapidKeys.publicKey && vapidKeys.privateKey) {
+  webpush.setVapidDetails(
+    'mailto:admin@qurbantek.vercel.app',
+    vapidKeys.publicKey,
+    vapidKeys.privateKey
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -24,6 +26,14 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Token is required' },
         { status: 400 }
+      );
+    }
+
+    // Check if VAPID keys are configured
+    if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
+      return NextResponse.json(
+        { error: 'VAPID keys not configured' },
+        { status: 500 }
       );
     }
 
@@ -44,8 +54,17 @@ export async function POST(request: Request) {
       icon: '/logo192.png', // You may want to add a logo
     });
 
-    const promises = subscriptions.map(({ subscription }) => 
-      webpush.sendNotification(subscription, payload)
+    const promises = subscriptions.map(sub => 
+      webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth
+          }
+        },
+        payload
+      )
     );
 
     await Promise.all(promises);

@@ -63,6 +63,16 @@ const SHEET_NAME = process.env.GOOGLE_SHEET_TAB ?? "Hewan";
 const SUBSCRIPTION_SHEET_NAME = process.env.GOOGLE_SUBSCRIPTION_TAB ?? "Subscriptions";
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? "";
 
+function hasGoogleSheetsCredentials() {
+  return Boolean(
+    process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+  );
+}
+
 // ── Build the authenticated Sheets client ─────────────────────
 function getSheetsClient() {
   const auth = new google.auth.GoogleAuth({
@@ -149,6 +159,13 @@ export async function fetchAllAnimals(): Promise<Animal[]> {
     return [];
   }
 
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn(
+      "[sheets] Google service account credentials are incomplete — returning empty list.",
+    );
+    return [];
+  }
+
   const sheets = getSheetsClient();
 
   const response = await sheets.spreadsheets.values.get({
@@ -204,6 +221,13 @@ export async function storePushSubscription(
     return;
   }
 
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn(
+      "[sheets] Google service account credentials are incomplete — skipping subscription storage.",
+    );
+    return;
+  }
+
   try {
     const sheets = getSheetsClient();
     await sheets.spreadsheets.values.append({
@@ -233,6 +257,13 @@ export async function getPushSubscriptions(): Promise<PushSubscription[]> {
   if (!SPREADSHEET_ID) {
     console.warn(
       "[sheets] GOOGLE_SPREADSHEET_ID is not set — returning empty subscriptions.",
+    );
+    return [];
+  }
+
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn(
+      "[sheets] Google service account credentials are incomplete — returning empty subscriptions.",
     );
     return [];
   }
@@ -268,6 +299,13 @@ export async function getPushSubscriptionsByToken(token: string): Promise<PushSu
   if (!SPREADSHEET_ID) {
     console.warn(
       "[sheets] GOOGLE_SPREADSHEET_ID is not set — returning empty subscriptions.",
+    );
+    return [];
+  }
+
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn(
+      "[sheets] Google service account credentials are incomplete — returning empty subscriptions.",
     );
     return [];
   }

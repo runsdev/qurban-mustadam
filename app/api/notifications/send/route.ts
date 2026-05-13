@@ -1,26 +1,24 @@
 import { NextResponse } from 'next/server';
 import webpush from 'web-push';
-import { fetchAnimalById } from '@/lib/sheets';
-import { getPushSubscriptionsByToken } from '@/lib/sheets';
+import { fetchAnimalById, getPushSubscriptionsByToken } from '@/lib/sheets';
 
-// VAPID keys from environment variables
 const vapidKeys = {
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-  privateKey: process.env.VAPID_PRIVATE_KEY
+  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
+  privateKey: process.env.VAPID_PRIVATE_KEY ?? ''
 };
 
-// Set VAPID details
-webpush.setVapidDetails(
-  'mailto:admin@qurbantek.vercel.app',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+if (vapidKeys.publicKey && vapidKeys.privateKey) {
+  webpush.setVapidDetails(
+    'mailto:admin@qurbantek.vercel.app',
+    vapidKeys.publicKey,
+    vapidKeys.privateKey
+  );
+}
 
 export async function POST(request: Request) {
   try {
     const { animalId, oldStatus, newStatus } = await request.json();
 
-    // Validate required fields
     if (!animalId || !newStatus) {
       return NextResponse.json(
         { error: 'Animal ID and new status are required' },
@@ -28,7 +26,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch the animal to get current data
+    if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
+      return NextResponse.json(
+        { error: 'VAPID keys not configured' },
+        { status: 500 }
+      );
+    }
+
     const animal = await fetchAnimalById(animalId);
     if (!animal) {
       return NextResponse.json(
@@ -37,16 +41,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get subscriptions for this specific animal (using animal ID as token)
     const subscriptions = await getPushSubscriptionsByToken(animalId);
-
     if (subscriptions.length === 0) {
-      return NextResponse.json(
-        { message: 'No subscriptions found for this animal', success: true }
-      );
+      return NextResponse.json({ message: 'No subscriptions found for this animal', success: true });
     }
 
-    // Create notification message based on status change
     const statusLabels: Record<string, string> = {
       Persiapan: 'dalam persiapan',
       Disembelih: 'telah disembelih',
@@ -62,25 +61,32 @@ export async function POST(request: Request) {
       body = `Update status hewan ${animal.name} (ID: ${animal.id}): dari ${statusLabels[oldStatus] || oldStatus} menjadi ${statusLabel}.`;
     }
 
-    // Send notification to all subscriptions for this animal
     const payload = JSON.stringify({
       title: `Update Status Hewan ${animal.name}`,
-      body: body,
-      icon: animal.imageUrl || '/logo192.png',
+      body,
+      icon: animal.imageUrl || '/logo192.png'
     });
 
-    const promises = subscriptions.map(({ subscription }) => 
-      webpush.sendNotification(subscription, payload)
+    const promises = subscriptions.map(sub =>
+      webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth
+          }
+        },
+        payload
+      )
     );
 
     const results = await Promise.allSettled(promises);
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.length - successful;
+    const successful = results.filter(result => result.status === 'fulfilled').length;
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       message: `Notification sent to ${successful} subscriber(s)`,
-      failed: failed
+      failed: results.length - successful
     });
   } catch (error) {
     console.error('Error sending status notification:', error);
