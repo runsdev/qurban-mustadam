@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifikasi Web Push</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            color: #2f8f56;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 1.5rem;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 12px 16px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .enable-btn {
+            background-color: #2f8f56;
+            color: white;
+        }
+        .enable-btn:hover:not(:disabled) {
+            background-color: #277a4b;
+        }
+        .enable-btn:active:not(:disabled) {
+            background-color: #246e43;
+        }
+        .status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .status.success {
+            display: block;
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        .status.error {
+            display: block;
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .status.info {
+            display: block;
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        .instructions {
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #6b7280;
+            text-align: center;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid currentColor;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Notifikasi Web Push</h1>
+        <div class="button-group">
+            <button id="enableBtn" class="enable-btn">
+                Izinkan Notifikasi
+            </button>
+        </div>
+        <div id="status" class="status"></div>
+        <div class="instructions">
+            Klik tombol di atas untuk mengaktifkan notifikasi push.<br>
+            Pastikan Anda menggunakan HTTPS dan browser yang mendukung Service Worker.
+        </div>
+    </div>
+
+    <script>
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            })
+            .catch(err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+        }
+        
+        // Fungsi untuk mengubah base64 URL-safe ke Uint8Array
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        // Ambil token dan vapid key dari query string
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                token: params.get('token'),
+                vapidKey: params.get('vapidKey')
+            };
+        }
+
+        // Tampilkan status
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            statusEl.style.display = 'block';
+        }
+
+        // Sembunyikan status
+        function hideStatus() {
+            const statusEl = document.getElementById('status');
+            statusEl.style.display = 'none';
+        }
+
+        // Fungsi utama untuk mengaktifkan notifikasi
+        async function enableNotification() {
+            const { token, vapidKey } = getQueryParams();
+            
+            if (!token) {
+                showStatus('Token tidak ditemukan. Gunakan URL: notification.html?token=YOUR_TOKEN&vapidKey=YOUR_VAPID_KEY', 'error');
+                return;
+            }
+            
+            if (!vapidKey) {
+                showStatus('VAPID key tidak ditemukan. Gunakan URL: notification.html?token=YOUR_TOKEN&vapidKey=YOUR_VAPID_KEY', 'error');
+                return;
+            }
+
+            const enableBtn = document.getElementById('enableBtn');
+            enableBtn.disabled = true;
+            enableBtn.innerHTML = '<span class="loading"></span> Memproses...';
+            hideStatus();
+
+            try {
+                console.log('[ENABLE_PUSH] Memulai proses aktivasi notifikasi...');
+                
+                // Periksa dukungan browser
+                if (!('Notification' in window)) {
+                    throw new Error('Browser tidak mendukung Web Push Notification.');
+                }
+                
+                if (!('serviceWorker' in navigator)) {
+                    throw new Error('Browser tidak mendukung Service Worker.');
+                }
+
+                // Izin notifikasi
+                console.log('[ENABLE_PUSH] Meminta izin notifikasi...');
+                const permission = await Notification.requestPermission();
+                console.log('[ENABLE_PUSH] Hasil izin:', permission);
+                
+                if (permission !== 'granted') {
+                    throw new Error('Izin notifikasi ditolak.');
+                }
+
+                // Dapatkan registrasi service worker
+                console.log('[ENABLE_PUSH] Mendapatkan registrasi service worker...');
+                const registration = await navigator.serviceWorker.ready;
+                console.log('[ENABLE_PUSH] Service worker ready:', registration.scope);
+
+                // Periksa apakah sudah ada subscription
+                let subscription = await registration.pushManager.getSubscription();
+                console.log('[ENABLE_PUSH] Subscription yang ada:', subscription ? 'ditemukan' : 'tidak ditemukan');
+
+                if (!subscription) {
+                    console.log('[ENABLE_PUSH] Membuat subscription baru dengan VAPID key...');
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(vapidKey)
+                    });
+                    console.log('[ENABLE_PUSH] Subscription baru dibuat');
+                }
+
+                // Kirim subscription ke server
+                console.log('[ENABLE_PUSH] Mengirim subscription ke server...');
+                const res = await fetch(`/api/portal/${token}/subscribe`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(subscription.toJSON())
+                });
+
+                console.log('[ENABLE_PUSH] Respons server status:', res.status);
+                const json = await res.json();
+                console.log('[ENABLE_PUSH] Respons server:', json);
+
+                if (!res.ok) {
+                    throw new Error(json.error || 'Gagal aktivasi notifikasi.');
+                }
+
+                console.log('[ENABLE_PUSH] Notifikasi diaktifkan berhasil!');
+                showStatus('Notifikasi aktif. Anda akan menerima update otomatis.', 'success');
+                enableBtn.textContent = 'Notifikasi Aktif';
+                enableBtn.disabled = true;
+                
+            } catch (error) {
+                console.error('[ENABLE_PUSH] Error:', error);
+                showStatus(error.message || 'Gagal aktivasi notifikasi.', 'error');
+            } finally {
+                enableBtn.disabled = false;
+                enableBtn.innerHTML = 'Izinkan Notifikasi';
+            }
+        }
+
+        // Event listener untuk tombol
+        document.getElementById('enableBtn').addEventListener('click', enableNotification);
+
+        // Periksa dukungan saat halaman dimuat
+        window.addEventListener('load', () => {
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                showStatus('Browser tidak mendukung Web Push Notification atau Service Worker.', 'error');
+                document.getElementById('enableBtn').disabled = true;
+                document.getElementById('enableBtn').textContent = 'Tidak Didukung';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -299,9 +299,33 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
     [animals],
   );
 
-  const [filterLokasi, setFilterLokasi] = useState("");
+   const [filterLokasi, setFilterLokasi] = useState("");
 
-  const filtered = useMemo(() => {
+   // Notification handler
+   const handleLogoClick = useCallback(async () => {
+     if (!('Notification' in window)) {
+       alert('Browser tidak mendukung notifikasi');
+       return;
+     }
+
+     if (Notification.permission === 'granted') {
+       showNotification();
+     } else if (Notification.permission !== 'denied') {
+       const permission = await Notification.requestPermission();
+       if (permission === 'granted') {
+         showNotification();
+       }
+     }
+   }, []);
+
+   const showNotification = useCallback(() => {
+     const options = {
+       body: 'Update terbaru: Hewan sedang dalam proses pengolahan. Cek detail untuk informasi lebih lanjut.',
+     };
+     new Notification('Notifikasi Qurban Tek', options);
+   }, []);
+
+   const filtered = useMemo(() => {
     return animals.filter((a) => {
       if (
         filterID &&
@@ -328,11 +352,12 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
       {/* ── Top Navigation Bar ── */}
       <header className="sticky top-0 z-50 w-full glass-nav bg-[#fbf9f5]/70 shadow-[0_12px_32px_rgba(55,45,23,0.06)]">
         <nav className="flex justify-between items-center w-full px-6 py-4 max-w-screen-2xl mx-auto">
-          <div className="flex items-center gap-8">
-            <span className="font-headline text-2xl font-black text-primary-container">
-              Laporan Qurban Masjid Al-Mustadam
-            </span>
-          </div>
+       <div className="flex items-center gap-8 cursor-pointer" onClick={handleLogoClick}>
+             <span className="material-symbols-outlined text-2xl text-primary">notifications</span>
+             <span className="font-headline text-2xl font-black text-primary-container">
+               Laporan Qurban Masjid Al-Mustadam
+             </span>
+           </div>
           <div className="flex items-center gap-4">
             <div className="hidden lg:flex items-center bg-surface-container-low rounded-full px-4 py-2">
               <span className="material-symbols-outlined text-outline">
