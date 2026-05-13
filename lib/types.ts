@@ -56,6 +56,22 @@ export interface Animal {
 }
 
 /**
+ * Push subscription data to be stored in Google Sheets.
+ */
+export interface PushSubscription {
+  /** Timestamp when subscription was created */
+  timestamp: string;
+  /** Arbitrary token from query string (for associating with user) */
+  token: string;
+  /** Push subscription endpoint */
+  endpoint: string;
+  /** P-256dh key */
+  p256dh: string;
+  /** Auth key */
+  auth: string;
+}
+
+/**
  * Summary stats shown on the homepage hero bento.
  * Typically computed from all Animal rows.
  */

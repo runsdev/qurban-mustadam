@@ -31,7 +31,7 @@
 // ============================================================
 
 import { google } from "googleapis";
-import type { Animal, AnimalStatus, StageIndex, SummaryStats } from "./types";
+import type { Animal, AnimalStatus, StageIndex, SummaryStats, PushSubscription } from "./types";
 
 // ── Column indices (0-based) matching the sheet layout above ──
 const COL = {
@@ -50,7 +50,17 @@ const COL = {
   NOTES: 11,
 } as const;
 
+// Subscription sheet columns
+const SUB_COL = {
+  TIMESTAMP: 0,
+  TOKEN: 1,
+  ENDPOINT: 2,
+  P256DH: 3,
+  AUTH: 4,
+} as const;
+
 const SHEET_NAME = process.env.GOOGLE_SHEET_TAB ?? "Hewan";
+const SUBSCRIPTION_SHEET_NAME = process.env.GOOGLE_SUBSCRIPTION_TAB ?? "Subscriptions";
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? "";
 
 // ── Build the authenticated Sheets client ─────────────────────
@@ -67,7 +77,7 @@ function getSheetsClient() {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       client_id: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID,
     },
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
 
   return google.sheets({ version: "v4", auth });
@@ -181,4 +191,74 @@ export function computeStats(animals: Animal[]): SummaryStats {
     progressPercent,
     totalWeightKg,
   };
+}
+
+// ── Store push subscription in Google Sheets ─────────────────────
+export async function storePushSubscription(
+  subscription: PushSubscription
+): Promise<void> {
+  if (!SPREADSHEET_ID) {
+    console.warn(
+      "[sheets] GOOGLE_SPREADSHEET_ID is not set — skipping subscription storage.",
+    );
+    return;
+  }
+
+  try {
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SUBSCRIPTION_SHEET_NAME}!A:E`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [
+          [
+            subscription.timestamp,
+            subscription.token,
+            subscription.endpoint,
+            subscription.p256dh,
+            subscription.auth,
+          ],
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("[sheets] Failed to store push subscription:", error);
+    throw error;
+  }
+}
+
+// ── Get all push subscriptions from Google Sheets ────────────────
+export async function getPushSubscriptions(): Promise<PushSubscription[]> {
+  if (!SPREADSHEET_ID) {
+    console.warn(
+      "[sheets] GOOGLE_SPREADSHEET_ID is not set — returning empty subscriptions.",
+    );
+    return [];
+  }
+
+  try {
+    const sheets = getSheetsClient();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SUBSCRIPTION_SHEET_NAME}!A2:E`, // Start from row 2 to skip header
+    });
+
+    const rows = response.data.values ?? [];
+    return rows
+      .map(
+        (row) =>
+          ({
+            timestamp: row[SUB_COL.TIMESTAMP] ?? "",
+            token: row[SUB_COL.TOKEN] ?? "",
+            endpoint: row[SUB_COL.ENDPOINT] ?? "",
+            p256dh: row[SUB_COL.P256DH] ?? "",
+            auth: row[SUB_COL.AUTH] ?? "",
+          }) as PushSubscription
+      )
+      .filter((sub) => sub.endpoint); // Only return valid subscriptions
+  } catch (error) {
+    console.error("[sheets] Failed to get push subscriptions:", error);
+    return [];
+  }
 }
