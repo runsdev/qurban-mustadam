@@ -1,16 +1,114 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+
+const stageOptions = [
+  "Persiapan",
+  "Disembelih",
+  "Pengolahan",
+  "Distribusi",
+  "Selesai",
+] as const;
+
+type StageOption = (typeof stageOptions)[number];
+type CaptureMode = "image" | "video";
+
+function normalizeAnimalId(value: string) {
+  return value.trim().toUpperCase().replace(/^#/, "");
+}
+
+function stopStream(stream: MediaStream | null) {
+  stream?.getTracks().forEach((track) => track.stop());
+}
+
+function getSupportedVideoMimeType() {
+  if (typeof MediaRecorder === "undefined") {
+    return "";
+  }
+
+  const candidates = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+    "video/mp4",
+  ];
+
+  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
+}
 
 export default function PanitPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [animalId, setAnimalId] = useState("");
-  const [processStage, setProcessStage] = useState("");
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [processStage, setProcessStage] = useState<StageOption | "">("");
+  const [captureMode, setCaptureMode] = useState<CaptureMode | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaType, setMediaType] = useState<"" | "image" | "video">("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  const browserSupportsCamera = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(navigator.mediaDevices?.getUserMedia);
+  }, []);
+
+  const browserSupportsRecorder = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return typeof MediaRecorder !== "undefined";
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.srcObject = cameraStream;
+    if (cameraStream) {
+      video.play().catch(() => undefined);
+    }
+
+    return () => {
+      video.srcObject = null;
+    };
+  }, [cameraStream]);
+
+  useEffect(() => {
+    return () => {
+      stopStream(streamRef.current);
+      streamRef.current = null;
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        recorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const resetCapturedMedia = () => {
+    setMediaFile(null);
+    setMediaType("");
+    setPreviewUrl(null);
+  };
+
+  const stopCamera = () => {
+    stopStream(streamRef.current);
+    streamRef.current = null;
+    setCameraStream(null);
+    setCaptureMode(null);
+  };
 
   const handleLogin = async (password: string) => {
     try {
@@ -19,41 +117,170 @@ export default function PanitPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
-      const data = await res.json();
-      
-      if (!data.success) {
-        setError(data.error || "Login failed");
-        return false;
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Login failed");
       }
-      
+
       setAuthenticated(true);
       setError("");
-      return true;
-    } catch {
-      setError("Login error");
-      return false;
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Login error");
     }
   };
 
-  const handleCapture = async (type: "image" | "video") => {
-    try {
-      setMediaType(type);
-      
-      if (type === "image") {
-        // Simulate image capture (in real app, use camera API)
-        setMediaUrl("/placeholder-image.jpg"); // Placeholder
-      } else if (type === "video") {
-        // Simulate video capture
-        setMediaUrl("/placeholder-video.mp4"); // Placeholder
-      }
-    } catch {
-      setError("Failed to capture media");
+  const openCamera = async (mode: CaptureMode) => {
+    if (!browserSupportsCamera) {
+      setError("Browser ini tidak mendukung akses kamera.");
+      return;
     }
+
+    try {
+      setError("");
+      setSuccess("");
+      resetCapturedMedia();
+      stopCamera();
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+        },
+        audio: mode === "video",
+      });
+
+      streamRef.current = stream;
+      setCameraStream(stream);
+      setCaptureMode(mode);
+    } catch (cameraError) {
+      setError(
+        cameraError instanceof Error
+          ? cameraError.message
+          : "Gagal membuka kamera",
+      );
+    }
+  };
+
+  const capturePhoto = async () => {
+    const video = videoRef.current;
+    if (!video || !streamRef.current) {
+      setError("Kamera belum aktif.");
+      return;
+    }
+
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setError("Tidak dapat memproses foto.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, width, height);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => {
+          if (result) {
+            resolve(result);
+            return;
+          }
+
+          reject(new Error("Gagal mengambil foto."));
+        },
+        "image/jpeg",
+        0.95,
+      );
+    });
+
+    const fileName = `${normalizeAnimalId(animalId) || "panit"}-${processStage || "foto"}-${Date.now()}.jpg`;
+    const file = new File([blob], fileName, { type: blob.type || "image/jpeg" });
+
+    resetCapturedMedia();
+    setMediaFile(file);
+    setMediaType("image");
+    setPreviewUrl(URL.createObjectURL(file));
+    stopCamera();
+  };
+
+  const startRecording = async () => {
+    if (!browserSupportsRecorder) {
+      setError("Browser ini tidak mendukung perekaman video.");
+      return;
+    }
+
+    if (!streamRef.current) {
+      setError("Kamera belum aktif.");
+      return;
+    }
+
+    try {
+      const mimeType = getSupportedVideoMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(streamRef.current, { mimeType })
+        : new MediaRecorder(streamRef.current);
+
+      recorderRef.current = recorder;
+      recordedChunksRef.current = [];
+      setError("");
+      setSuccess("");
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        setError("Perekaman video gagal.");
+        setIsRecording(false);
+      };
+
+      recorder.onstop = () => {
+        const finalType = recorder.mimeType || mimeType || "video/webm";
+        const blob = new Blob(recordedChunksRef.current, { type: finalType });
+        const extension = finalType.includes("mp4") ? "mp4" : "webm";
+        const fileName = `${normalizeAnimalId(animalId) || "panit"}-${processStage || "video"}-${Date.now()}.${extension}`;
+        const file = new File([blob], fileName, { type: finalType });
+
+        resetCapturedMedia();
+        setMediaFile(file);
+        setMediaType("video");
+        setPreviewUrl(URL.createObjectURL(file));
+        setIsRecording(false);
+        stopCamera();
+      };
+
+      recorder.start();
+      setIsRecording(true);
+    } catch (recordingError) {
+      setError(
+        recordingError instanceof Error
+          ? recordingError.message
+          : "Gagal memulai perekaman.",
+      );
+      setIsRecording(false);
+    }
+  };
+
+  const stopRecording = () => {
+    if (!recorderRef.current || recorderRef.current.state === "inactive") {
+      return;
+    }
+
+    recorderRef.current.stop();
   };
 
   const handleUpload = async () => {
-    if (!animalId || !processStage || !mediaUrl) {
-      setError("Please select animal, process stage, and capture media");
+    const normalizedAnimalId = normalizeAnimalId(animalId);
+
+    if (!normalizedAnimalId || !processStage || !mediaFile) {
+      setError("Pilih hewan, stage proses, lalu ambil media terlebih dulu.");
       return;
     }
 
@@ -62,52 +289,91 @@ export default function PanitPage() {
     setSuccess("");
 
     try {
-      // In a real implementation, we would:
-      // 1. Get the actual media file (Blob) from camera
-      // 2. Upload to Google Drive using lib/drive.ts
-      // 3. Send notification
-      // 4. Update animal status
-      
-      // For now, simulate the process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate successful upload and processing
-      setSuccess("Media uploaded successfully! Notification sent and status updated.");
-      setMediaUrl(null);
-      setMediaType("");
-      // In a real app, we might reset the form or keep it for another upload
-    } catch (err: unknown) {
-      setError("Upload failed: " + (err instanceof Error ? err.message : "Unknown error"));
+      const formData = new FormData();
+      formData.append("animalId", normalizedAnimalId);
+      formData.append("processStage", processStage);
+      formData.append("mediaType", mediaType || (mediaFile.type.startsWith("video") ? "video" : "image"));
+      formData.append("mediaFile", mediaFile, mediaFile.name);
+
+      const response = await fetch("/api/panit/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "Upload gagal");
+      }
+
+      resetCapturedMedia();
+      setSuccess(data.message || "Media berhasil diupload ke Google Drive.");
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Gagal upload media",
+      );
     } finally {
       setUploading(false);
     }
   };
 
+  const handleLogout = () => {
+    if (isRecording && recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+    } else {
+      stopCamera();
+    }
+    recorderRef.current = null;
+    recordedChunksRef.current = [];
+    resetCapturedMedia();
+    setAuthenticated(false);
+    setAnimalId("");
+    setProcessStage("");
+    setIsRecording(false);
+    setError("");
+    setSuccess("");
+  };
+
   if (!authenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md space-y-6 p-8 bg-white rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-center text-gray-800">
-            Panit Login
-          </h2>
-          <p className="text-center text-gray-600">
-            Enter 6-digit password to access media upload system
-          </p>
-          
-          {error && <p className="text-center text-red-500">{error}</p>}
-          
-          <form className="space-y-4" onSubmit={(e: FormEvent<HTMLFormElement>) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            const password = formData.get("password");
-            if (typeof password === "string") {
-              handleLogin(password);
-            } else {
-              setError("Invalid password");
-            }
-          }}>
+      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,_#fff7ed_0%,_#f8fafc_45%,_#eef2ff_100%)] px-4">
+        <div className="w-full max-w-md space-y-6 rounded-3xl border border-white/70 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
+          <div className="space-y-2 text-center">
+            <p className="text-xs font-black uppercase tracking-[0.35em] text-slate-500">
+              Panit Access
+            </p>
+            <h2 className="text-3xl font-black text-slate-900">
+              Login Panit
+            </h2>
+            <p className="text-sm text-slate-600">
+              Masukkan password 6 digit untuk masuk ke sistem capture dan upload.
+            </p>
+          </div>
+
+          {error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          <form
+            className="space-y-4"
+            onSubmit={async (event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              const password = formData.get("password");
+
+              if (typeof password === "string") {
+                await handleLogin(password);
+                return;
+              }
+
+              setError("Password tidak valid.");
+            }}
+          >
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
                 Password
               </label>
               <input
@@ -117,21 +383,22 @@ export default function PanitPage() {
                 maxLength={6}
                 pattern="[0-9]*"
                 inputMode="numeric"
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="______"
+                autoComplete="one-time-code"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
+                placeholder="******"
               />
             </div>
-            
+
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-white transition hover:bg-slate-700"
             >
               Login
             </button>
           </form>
-          
-          <p className="text-xs text-center text-gray-500">
-            Password must be exactly 6 digits
+
+          <p className="text-center text-xs text-slate-500">
+            Password diambil dari Google Sheets tab Password.
           </p>
         </div>
       </div>
@@ -139,173 +406,316 @@ export default function PanitPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Panit Media Upload
-          </h1>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#fff7ed_0%,_#f8fafc_40%,_#eef2ff_100%)] text-slate-900">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8 flex flex-col gap-4 rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.35em] text-slate-500">
+              Panit Media Upload
+            </p>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+              Kamera, Rekam, Upload ke Drive
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+              Ambil foto atau video langsung dari browser, simpan ke Google Drive,
+              update spreadsheet, lalu kirim notifikasi ke shohibul.
+            </p>
+          </div>
+
           <button
-            onClick={() => setAuthenticated(false)}
-            className="text-sm text-gray-600 hover:text-gray-900"
+            onClick={handleLogout}
+            className="self-start rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+            type="button"
           >
             Logout
           </button>
         </div>
-        
-        {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">{error}</div>}
-        {success && <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md text-green-800">{success}</div>}
-        
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              Animal Selection
-            </h2>
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Animal ID
-              </label>
-              <input
-                type="text"
-                value={animalId}
-                onChange={(e) => setAnimalId(e.target.value.toUpperCase().trim())}
-                placeholder="Enter animal ID (e.g., #001)"
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+
+        {error && (
+          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              Process Stage Classification
-            </h2>
-            <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Select Qurban Process Stage
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {["Persiapan", "Disembelih", "Pengolahan", "Distribusi", "Selesai"].map((stage) => (
-                  <label key={stage} className="flex items-center space-x-2">
+        )}
+
+        {success && (
+          <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            {success}
+          </div>
+        )}
+
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="space-y-6 lg:col-span-4">
+            <section className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <h2 className="text-lg font-black uppercase tracking-[0.22em] text-slate-500">
+                Animal
+              </h2>
+              <div className="mt-4 space-y-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Animal ID
+                </label>
+                <input
+                  type="text"
+                  value={animalId}
+                  onChange={(event) =>
+                    setAnimalId(event.target.value.toUpperCase().trim())
+                  }
+                  placeholder="Contoh: #001"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-200"
+                />
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+              <h2 className="text-lg font-black uppercase tracking-[0.22em] text-slate-500">
+                Stage
+              </h2>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                {stageOptions.map((stage) => (
+                  <label
+                    key={stage}
+                    className={`flex cursor-pointer items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                      processStage === stage
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <span>{stage}</span>
                     <input
                       type="radio"
+                      name="stage"
                       value={stage}
                       checked={processStage === stage}
-                      onChange={(e) => setProcessStage(e.target.value)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                      onChange={(event) => setProcessStage(event.target.value as StageOption)}
+                      className="h-4 w-4"
                     />
-                    <span className="text-sm text-gray-700">{stage}</span>
                   </label>
                 ))}
               </div>
-            </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/70 bg-slate-950 p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.14)]">
+              <h2 className="text-lg font-black uppercase tracking-[0.22em] text-white/70">
+                Setup GDrive
+              </h2>
+              <div className="mt-4 space-y-3 text-sm text-slate-300">
+                <p>
+                  Upload memakai service account Google Drive dari environment server.
+                </p>
+                <div className="rounded-2xl bg-white/5 p-4 font-mono text-xs leading-6 text-slate-200">
+                  <div>GOOGLE_SERVICE_ACCOUNT_PROJECT_ID</div>
+                  <div>GOOGLE_SERVICE_ACCOUNT_KEY_ID</div>
+                  <div>GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY</div>
+                  <div>GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL</div>
+                  <div>GOOGLE_SERVICE_ACCOUNT_CLIENT_ID</div>
+                  <div>GOOGLE_SPREADSHEET_ID</div>
+                </div>
+                <p>
+                  Share folder atau spreadsheet ke email service account agar Drive dan Sheets bisa ditulis.
+                </p>
+              </div>
+            </section>
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              Media Capture
-            </h2>
-            
-            {mediaUrl && mediaType ? (
-              <div className="space-y-4">
-                {mediaType === "image" && (
-                  <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-200">
-                    <img
-                      src={mediaUrl}
-                      alt="Captured"
-                      className="object-cover w-full h-full"
-                    />
+
+          <div className="space-y-6 lg:col-span-8">
+            <section className="overflow-hidden rounded-3xl border border-white/70 bg-white/90 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
+              <div className="border-b border-slate-100 px-6 py-5">
+                <h2 className="text-xl font-black text-slate-900">Media Capture</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Gunakan kamera browser untuk foto atau video. Foto diambil dari frame live, video direkam dengan MediaRecorder.
+                </p>
+              </div>
+
+              <div className="space-y-6 p-6">
+                {previewUrl && mediaType ? (
+                  <div className="space-y-4">
+                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
+                      {mediaType === "image" ? (
+                        <img
+                          src={previewUrl}
+                          alt="Captured media"
+                          className="h-auto w-full object-cover"
+                        />
+                      ) : (
+                        <video
+                          src={previewUrl}
+                          controls
+                          className="h-auto w-full object-cover"
+                        />
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          resetCapturedMedia();
+                          setCaptureMode(null);
+                          setError("");
+                        }}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                      >
+                        Ulangi
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleUpload}
+                        disabled={uploading || !animalId || !processStage || !mediaFile}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {uploading ? "Uploading..." : "Upload ke Drive"}
+                      </button>
+                    </div>
+                  </div>
+                ) : cameraStream ? (
+                  <div className="space-y-4">
+                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="aspect-video w-full object-cover"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      {captureMode === "image" ? (
+                        <button
+                          type="button"
+                          onClick={capturePhoto}
+                          className="rounded-2xl bg-amber-500 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-amber-600"
+                        >
+                          Ambil Foto
+                        </button>
+                      ) : (
+                        <>
+                          {!isRecording ? (
+                            <button
+                              type="button"
+                              onClick={startRecording}
+                              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-emerald-700"
+                            >
+                              Mulai Rekam
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={stopRecording}
+                              className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-red-700"
+                            >
+                              Berhenti Rekam
+                            </button>
+                          )}
+                        </>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isRecording && recorderRef.current?.state === "recording") {
+                            recorderRef.current.stop();
+                          } else {
+                            stopCamera();
+                          }
+                          setIsRecording(false);
+                        }}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                      >
+                        Tutup Kamera
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => openCamera("image")}
+                      disabled={uploading || !browserSupportsCamera}
+                      className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">
+                        Photo
+                      </div>
+                      <div className="mt-2 text-2xl font-black text-slate-900">
+                        Buka Kamera Foto
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Ambil satu frame foto dari kamera browser.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => openCamera("video")}
+                      disabled={uploading || !browserSupportsCamera || !browserSupportsRecorder}
+                      className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">
+                        Video
+                      </div>
+                      <div className="mt-2 text-2xl font-black text-slate-900">
+                        Buka Kamera Video
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600">
+                        Rekam video dengan audio jika browser mendukung.
+                      </p>
+                    </button>
                   </div>
                 )}
-                {mediaType === "video" && (
-                  <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-200">
-                    <video
-                      src={mediaUrl}
-                      controls
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
+
+                <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">
+                  {browserSupportsCamera ? (
+                    <p>
+                      Kamera siap digunakan. Pastikan halaman dibuka lewat HTTPS saat deployment.
+                    </p>
+                  ) : (
+                    <p>
+                      Browser ini tidak mendukung akses kamera. Gunakan browser yang mendukung MediaDevices API.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/70 bg-white/90 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={uploading || !animalId || !processStage || !mediaFile}
+                className="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 px-5 py-4 text-sm font-black uppercase tracking-[0.24em] text-white transition hover:from-slate-800 hover:via-slate-900 hover:to-indigo-900 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {uploading ? (
+                  <>
+                    <svg
+                      className="h-5 w-5 animate-spin text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Uploading ke Drive...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">upload</span>
+                    Upload, Update Sheet, Notify
+                  </>
                 )}
-                
-                <div className="flex justify-end space-x-3">
-                  <button
-                    onClick={() => {
-                      setMediaUrl(null);
-                      setMediaType("");
-                    }}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-                  >
-                    Retake
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex justify-center space-x-4">
-                  <button
-                    onClick={() => handleCapture("image")}
-                    disabled={uploading}
-                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    📸 Capture Photo
-                  </button>
-                  <button
-                    onClick={() => handleCapture("video")}
-                    disabled={uploading}
-                    className="flex-1 bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
-                  >
-                    🎥 Record Video
-                  </button>
-                </div>
-                
-                <div className="text-center text-sm text-gray-500">
-                  In a real implementation, this would use the device camera
-                  and microphone APIs to capture actual media
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <button
-              onClick={handleUpload}
-              disabled={uploading || !animalId || !processStage || !mediaUrl}
-              className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2"
-            >
-              {uploading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Uploading...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 114 0 2 2 0 00-4 0z"></path>
-                  </svg>
-                  <span>Send to Drive & Notify</span>
-                </>
-              )}
-            </button>
-          </div>
-          
-          <div className="bg-blue-50 rounded-lg p-4 mt-6">
-            <h3 className="font-semibold text-blue-800 mb-2">
-              How It Works
-            </h3>
-            <ol className="list-decimal pl-5 text-sm text-gray-700 space-y-2">
-              <li>Enter animal ID (e.g., #001)</li>
-              <li>Select the qurban process stage</li>
-              <li>Capture photo or video using device camera</li>
-              <li>Click "Send to Drive & Notify" to:
-                <ul className="list-disc pl-5 mt-1 text-xs">
-                  <li>Upload media to Google Drive in /(animal ID)/(process stage)/ folder</li>
-                  <li>Send push notification to shohibul(s)</li>
-                  <li>Update animal status in spreadsheet to next stage</li>
-                </ul>
-              </li>
-            </ol>
+              </button>
+            </section>
           </div>
         </div>
       </div>

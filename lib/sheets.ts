@@ -248,6 +248,74 @@ export async function updateAnimalStatus(id: string, newStatus: AnimalStatus): P
   }
 }
 
+function columnNumberToLetter(columnNumber: number) {
+  let result = "";
+  let current = columnNumber;
+
+  while (current > 0) {
+    const remainder = (current - 1) % 26;
+    result = String.fromCharCode(65 + remainder) + result;
+    current = Math.floor((current - 1) / 26);
+  }
+
+  return result;
+}
+
+async function updateAnimalCell(id: string, columnIndex: number, value: string): Promise<void> {
+  if (!SPREADSHEET_ID) {
+    console.warn("[sheets] GOOGLE_SPREADSHEET_ID is not set — skipping cell update.");
+    return;
+  }
+
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn(
+      "[sheets] Google service account credentials are incomplete — skipping cell update.",
+    );
+    return;
+  }
+
+  const sheets = getSheetsClient();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A2:A`,
+  });
+
+  const rows = response.data.values ?? [];
+  const rowIndex = rows.findIndex(
+    (row) => row[0]?.toString().toUpperCase() === id.toUpperCase(),
+  );
+
+  if (rowIndex === -1) {
+    throw new Error(`Animal with ID ${id} not found`);
+  }
+
+  const sheetRow = rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!${columnNumberToLetter(columnIndex)}${sheetRow}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [[value]] },
+  });
+}
+
+export async function updateAnimalDriveUrl(id: string, driveUrl: string): Promise<void> {
+  try {
+    await updateAnimalCell(id, COL.DRIVE_URL + 1, driveUrl);
+  } catch (error) {
+    console.error("[sheets] Failed to update animal drive URL:", error);
+    throw error;
+  }
+}
+
+export async function updateAnimalImageUrl(id: string, imageUrl: string): Promise<void> {
+  try {
+    await updateAnimalCell(id, COL.IMAGE_URL + 1, imageUrl);
+  } catch (error) {
+    console.error("[sheets] Failed to update animal image URL:", error);
+    throw error;
+  }
+}
+
 // ── Get the panit password from the Password tab ─────────────────────
 export async function getPassword(): Promise<string | null> {
   if (!SPREADSHEET_ID) {
