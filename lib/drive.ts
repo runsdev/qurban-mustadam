@@ -22,78 +22,10 @@ export async function uploadMediaToDrive({
   parentFolderId?: string | null;
 }): Promise<string> {
   // Check for required environment variables
-  if (!process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID ||
-      !process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID ||
-      !process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ||
-      !process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL ||
-      !process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID) {
-    throw new Error("Google Drive API credentials not configured");
-  }
-
   try {
+    const credentials = await resolveDriveCredentials();
+
     // Prefer Drive-specific service account env vars if provided
-    let credentials: any = null;
-
-    // 1) Explicit DRIVE-specific env vars
-    if (
-      process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_PROJECT_ID &&
-      process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_ID &&
-      process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY &&
-      process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_CLIENT_EMAIL &&
-      process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_CLIENT_ID
-    ) {
-      credentials = {
-        type: "service_account",
-        project_id: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_PROJECT_ID,
-        private_key_id: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_ID,
-        private_key: (process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
-        client_email: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_CLIENT_EMAIL,
-        client_id: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_CLIENT_ID,
-      };
-    }
-
-    // 2) JSON file path (e.g. for local testing). Use env GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH
-    if (!credentials && process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH) {
-      try {
-        const json = await fs.readFile(process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH, "utf8");
-        const parsed = JSON.parse(json);
-        credentials = {
-          type: parsed.type,
-          project_id: parsed.project_id,
-          private_key_id: parsed.private_key_id,
-          private_key: parsed.private_key,
-          client_email: parsed.client_email,
-          client_id: parsed.client_id,
-        };
-      } catch (err) {
-        console.warn("[drive] Failed to read DRIVE service account JSON path:", err);
-      }
-    }
-
-    // 3) Fallback to general GOOGLE_SERVICE_ACCOUNT_* env vars
-    if (!credentials) {
-      if (
-        process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID &&
-        process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID &&
-        process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY &&
-        process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL &&
-        process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID
-      ) {
-        credentials = {
-          type: "service_account",
-          project_id: process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID,
-          private_key_id: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID,
-          private_key: (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
-          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL,
-          client_id: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID,
-        };
-      }
-    }
-
-    if (!credentials) {
-      throw new Error("Google Drive API credentials not configured (no Drive or general service account found)");
-    }
-
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: SCOPES,
@@ -104,8 +36,10 @@ export async function uploadMediaToDrive({
     // Determine parent folder (root or provided)
     let rootParent = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID ?? null;
     if (!rootParent) {
-      // Try reading from Env sheet if not provided in env
-      rootParent = await getEnvValue("GOOGLE_DRIVE_PARENT_FOLDER_ID");
+      // Try reading from Env sheet if not provided in env.
+      rootParent =
+        (await getEnvValue("GOOGLE_DRIVE_PARENT_FOLDER_ID")) ??
+        (await getEnvValue("GOOGLE_DRIVE_FOLDER_ID"));
     }
 
     const parentForAnimal = parentFolderId ?? rootParent ?? "root";
@@ -149,6 +83,114 @@ export async function uploadMediaToDrive({
     console.error("[drive] Failed to upload media:", error);
     throw error;
   }
+}
+
+async function resolveDriveCredentials(): Promise<{
+  type: string;
+  project_id?: string;
+  private_key_id?: string;
+  private_key?: string;
+  client_email?: string;
+  client_id?: string;
+}> {
+  const fromDriveEnv =
+    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_PROJECT_ID &&
+    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_ID &&
+    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY &&
+    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_CLIENT_EMAIL &&
+    process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_CLIENT_ID
+      ? {
+          type: "service_account",
+          project_id: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_PROJECT_ID,
+          private_key_id: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_KEY_ID,
+          private_key: (process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
+          client_email: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_CLIENT_EMAIL,
+          client_id: process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_CLIENT_ID,
+        }
+      : null;
+
+  if (fromDriveEnv) {
+    return fromDriveEnv;
+  }
+
+  if (process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH) {
+    try {
+      const json = await fs.readFile(process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_PATH, "utf8");
+      const parsed = JSON.parse(json);
+      return {
+        type: parsed.type,
+        project_id: parsed.project_id,
+        private_key_id: parsed.private_key_id,
+        private_key: parsed.private_key,
+        client_email: parsed.client_email,
+        client_id: parsed.client_id,
+      };
+    } catch (err) {
+      console.warn("[drive] Failed to read DRIVE service account JSON path:", err);
+    }
+  }
+
+  const sheetCredentials = await readCredentialsFromEnvSheet();
+  if (sheetCredentials) {
+    return sheetCredentials;
+  }
+
+  const generalEnv =
+    process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID &&
+    process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID &&
+    process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY &&
+    process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL &&
+    process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID
+      ? {
+          type: "service_account",
+          project_id: process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID,
+          private_key_id: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID,
+          private_key: (process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
+          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL,
+          client_id: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID,
+        }
+      : null;
+
+  if (generalEnv) {
+    return generalEnv;
+  }
+
+  throw new Error(
+    "Google Drive API credentials not configured. Isi tab Env untuk Drive atau set GOOGLE_DRIVE_SERVICE_ACCOUNT_* di env runtime.",
+  );
+}
+
+async function readCredentialsFromEnvSheet(): Promise<{
+  type: string;
+  project_id: string;
+  private_key_id: string;
+  private_key: string;
+  client_email: string;
+  client_id: string;
+} | null> {
+  const keys = [
+    "GOOGLE_SERVICE_ACCOUNT_PROJECT_ID",
+    "GOOGLE_SERVICE_ACCOUNT_KEY_ID",
+    "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY",
+    "GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL",
+    "GOOGLE_SERVICE_ACCOUNT_CLIENT_ID",
+  ] as const;
+
+  const values = await Promise.all(keys.map((key) => getEnvValue(key)));
+  const [projectId, keyId, privateKey, clientEmail, clientId] = values;
+
+  if (!projectId || !keyId || !privateKey || !clientEmail || !clientId) {
+    return null;
+  }
+
+  return {
+    type: "service_account",
+    project_id: projectId,
+    private_key_id: keyId,
+    private_key: privateKey.replace(/\\n/g, "\n"),
+    client_email: clientEmail,
+    client_id: clientId,
+  };
 }
 
 // Helper function to get or create a folder in Google Drive
