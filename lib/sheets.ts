@@ -62,12 +62,16 @@ const SUB_COL = {
 const SHEET_NAME = process.env.GOOGLE_SHEET_TAB ?? "Hewan";
 const SUBSCRIPTION_SHEET_NAME = process.env.GOOGLE_SUBSCRIPTION_TAB ?? "Subscriptions";
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? "";
+const SERVICE_ACCOUNT_EMAIL =
+  process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ??
+  process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL ??
+  "";
 
 function hasGoogleSheetsCredentials() {
   return Boolean(
     process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID &&
       process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID &&
-      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+      SERVICE_ACCOUNT_EMAIL &&
       process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID &&
       process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
   );
@@ -84,7 +88,7 @@ function getSheetsClient() {
       private_key: (
         process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ?? ""
       ).replace(/\\n/g, "\n"),
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      client_email: SERVICE_ACCOUNT_EMAIL,
       client_id: process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID,
     },
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],

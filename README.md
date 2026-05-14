@@ -111,11 +111,11 @@ Open [http://localhost:3000](http://localhost:3000).
 ### How It Works
 
 1. Users can subscribe to push notifications for specific animals by visiting the animal detail page and clicking the "Aktifkan Notifikasi untuk Hewan Ini" button
-2. This redirects to a notification permission page (`/notification.html?token={ANIMAL_ID}&vapidKey={VAPID_KEY}`)
+2. Browser asks notification permission directly on the same detail page (no redirect)
 3. After granting permission, the subscription is stored in the Google Sheets `Subscriptions` tab
-4. When animal status changes, administrators can trigger notifications via:
+4. When animal status changes, notifications can be sent via:
    - Manual API call to `/api/notifications/send`
-   - Automatic integration with their workflow (webhooks, etc.)
+  - Secure webhook `/api/notifications/webhook` (recommended for Google Apps Script)
 
 ### API Endpoints
 
@@ -139,6 +139,14 @@ POST /api/notifications/send
 Body: { animalId: string, oldStatus?: string, newStatus: string }
 ```
 Sends a formatted notification about a status change to all subscribers of the specific animal.
+
+#### Secure Webhook for Spreadsheet Automation
+```
+POST /api/notifications/webhook
+Headers: x-webhook-secret: <GOOGLE_SHEETS_WEBHOOK_SECRET>
+Body: { animalId: string, oldStatus?: string, newStatus: string }
+```
+Same behavior as `/api/notifications/send`, but protected by a secret for external automation.
 
 ### Manual Notification Testing
 
@@ -174,12 +182,17 @@ app/
     notifications/
       route.ts              # POST /api/notifications (generic)
       send/route.ts         # POST /api/notifications/send (status updates)
+      webhook/route.ts      # POST /api/notifications/webhook (secret-protected)
   public/
-    notification.html       # Notification permission page
+    notification.html       # Legacy page (optional) for manual permission flow
     service-worker.js       # Service worker for push notifications
 lib/
   sheets.ts                 # Google Sheets data layer (now handles subscriptions)
+  notifications.ts          # Shared web push sender for status updates
   types.ts                  # Shared TypeScript interfaces (includes PushSubscription)
+
+docs/
+  google-sheets-webhook.md  # Apps Script setup for auto notifications from sheet edits
 ```
 
 ## Environment Notes
@@ -188,8 +201,17 @@ lib/
 - When `GOOGLE_SPREADSHEET_ID` is not set, the API returns an empty list and the detail page falls back to built-in mock data.
 - The private key in `.env.local` uses literal `\n` for newlines; `sheets.ts` handles the conversion automatically.
 - VAPID keys can be generated at https://web-push-codelab.glitch.me/
-- The `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is exposed to the browser and must be included in the notification.html page URL
+- The `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is exposed to the browser and used by the in-page subscribe button
 - The `VAPID_PRIVATE_KEY` must be kept secret and is only used on the server
+- Set `GOOGLE_SHEETS_WEBHOOK_SECRET` to secure the webhook endpoint used by Google Apps Script
+
+## Google Sheets Auto Trigger
+
+To send notifications automatically when status is edited in Google Sheets, use an installable Apps Script `onEdit` trigger that calls `/api/notifications/webhook`.
+
+Full setup and script template:
+
+- `docs/google-sheets-webhook.md`
 
 ## Deploy on Vercel
 

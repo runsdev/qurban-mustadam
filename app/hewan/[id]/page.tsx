@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { fetchAnimalById } from "@/lib/sheets";
 import type { Animal } from "@/lib/types";
+import NotificationSubscribeButton from "./NotificationSubscribeButton";
 
 // ── Fallback mock data (used when Google Sheets env vars are not set) ─
 const mockData: Record<string, Animal> = {
@@ -223,14 +224,10 @@ export default async function HewanDetailPage({
                  {animal.name}
                </h2>
 
-               {/* Activate Notifications Button */}
-               <a
-                 href={`/notification.html?token=${animal.id}&vapidKey=${process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}`}
-                 className="inline-flex items-center gap-2 px-4 py-2 bg-primary-fixed text-on-primary-fixed-variant font-bold text-xs uppercase tracking-widest"
-               >
-                 <span className="material-symbols-outlined">notifications</span>
-                 Aktifkan Notifikasi untuk Hewan Ini
-               </a>
+              <NotificationSubscribeButton
+                token={animal.id}
+                vapidPublicKey={process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""}
+              />
             </div>
 
             {/* Right: Animal photo */}
