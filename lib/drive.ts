@@ -35,28 +35,35 @@ export async function uploadMediaToDrive({
     const drive = google.drive({ version: "v3", auth });
 
     // Determine parent folder (root or provided)
-    let rootParent = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID ?? null;
+    let rootParent =
+      process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID ??
+      process.env.GOOGLE_DRIVE_SHARED_DRIVE_ID ??
+      null;
     if (!rootParent) {
       // Try reading from Env sheet if not provided in env.
       rootParent =
         (await getEnvValue("GOOGLE_DRIVE_PARENT_FOLDER_ID")) ??
+        (await getEnvValue("GOOGLE_DRIVE_SHARED_DRIVE_ID")) ??
         (await getEnvValue("GOOGLE_DRIVE_FOLDER_ID"));
     }
 
     const parentForAnimal = parentFolderId ?? rootParent ?? "root";
+    const sharedDriveId = isSharedDriveId(parentForAnimal) ? parentForAnimal : null;
 
     // Find or create the animal folder
     let animalFolderId = await getOrCreateFolder(
       drive,
       animalId,
       parentForAnimal as string,
+      sharedDriveId,
     );
 
     // Find or create the process stage subfolder
     const processFolderId = await getOrCreateFolder(
       drive,
       processStage,
-      animalFolderId
+      animalFolderId,
+      sharedDriveId,
     );
 
     // Upload the file
@@ -199,14 +206,24 @@ async function readCredentialsFromEnvSheet(): Promise<{
 async function getOrCreateFolder(
   drive: any,
   folderName: string,
-  parentFolderId: string
+  parentFolderId: string,
+  sharedDriveId?: string | null,
 ): Promise<string> {
   try {
     // Search for existing folder
-    const response = await drive.files.list({
+    const listOptions: Record<string, unknown> = {
       q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`,
       fields: "files(id, name)",
-    });
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    };
+
+    if (sharedDriveId) {
+      listOptions.corpora = "drive";
+      listOptions.driveId = sharedDriveId;
+    }
+
+    const response = await drive.files.list(listOptions);
 
     const folders = response.data.files;
     if (folders.length > 0) {
@@ -223,6 +240,7 @@ async function getOrCreateFolder(
     const folderResponse = await drive.files.create({
       requestBody: folderMetadata,
       fields: "id",
+      supportsAllDrives: true,
     });
 
     return folderResponse.data.id;
@@ -230,4 +248,8 @@ async function getOrCreateFolder(
     console.error("[drive] Error in getOrCreateFolder:", error);
     throw error;
   }
+}
+
+function isSharedDriveId(value: string) {
+  return /^0A[0-9A-Za-z_-]{10,}$/.test(value);
 }
