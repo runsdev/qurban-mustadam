@@ -14,7 +14,7 @@ export async function uploadMediaToDrive({
 }: {
   animalId: string;
   processStage: string;
-  file: Blob;
+  file: File;
   mimeType: string;
 }): Promise<string> {
   // Check for required environment variables

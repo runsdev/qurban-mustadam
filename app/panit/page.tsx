@@ -1,17 +1,18 @@
-import { useState } from "react";
+"use client";
+
+import { useState, type FormEvent } from "react";
 
 export default function PanitPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [animalId, setAnimalId] = useState("");
   const [processStage, setProcessStage] = useState("");
-  const [mediaUrl, setMediaUrl] = useState(null);
-  const [mediaType, setMediaType] = useState(""); // 'image' or 'video'
-  const [isRecording, setIsRecording] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<"" | "image" | "video">("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const handleLogin = async (password) => {
+  const handleLogin = async (password: string) => {
     try {
       const res = await fetch("/api/panit/login", {
         method: "POST",
@@ -28,13 +29,13 @@ export default function PanitPage() {
       setAuthenticated(true);
       setError("");
       return true;
-    } catch (err) {
+    } catch {
       setError("Login error");
       return false;
     }
   };
 
-  const handleCapture = async (type) => {
+  const handleCapture = async (type: "image" | "video") => {
     try {
       setMediaType(type);
       
@@ -45,7 +46,7 @@ export default function PanitPage() {
         // Simulate video capture
         setMediaUrl("/placeholder-video.mp4"); // Placeholder
       }
-    } catch (err) {
+    } catch {
       setError("Failed to capture media");
     }
   };
@@ -75,8 +76,8 @@ export default function PanitPage() {
       setMediaUrl(null);
       setMediaType("");
       // In a real app, we might reset the form or keep it for another upload
-    } catch (err) {
-      setError("Upload failed: " + err.message);
+    } catch (err: unknown) {
+      setError("Upload failed: " + (err instanceof Error ? err.message : "Unknown error"));
     } finally {
       setUploading(false);
     }
@@ -95,11 +96,15 @@ export default function PanitPage() {
           
           {error && <p className="text-center text-red-500">{error}</p>}
           
-          <form className="space-y-4" onSubmit={(e) => {
+          <form className="space-y-4" onSubmit={(e: FormEvent<HTMLFormElement>) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
+            const formData = new FormData(e.currentTarget);
             const password = formData.get("password");
-            handleLogin(password);
+            if (typeof password === "string") {
+              handleLogin(password);
+            } else {
+              setError("Invalid password");
+            }
           }}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -109,7 +114,7 @@ export default function PanitPage() {
                 type="password"
                 name="password"
                 required
-                maxLength="6"
+                maxLength={6}
                 pattern="[0-9]*"
                 inputMode="numeric"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
