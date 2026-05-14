@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { getEnvValue } from "./sheets";
 import fs from "fs/promises";
+import { Readable } from "node:stream";
 
 // Google Drive API scopes
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
@@ -64,12 +65,13 @@ export async function uploadMediaToDrive({
       parents: [processFolderId],
     };
 
-    // Convert Blob to Buffer for upload
+    // Convert Blob to a Node.js stream for googleapis upload
     const buffer = Buffer.from(await file.arrayBuffer());
+    const stream = Readable.from(buffer);
 
     const media = {
       mimeType,
-      body: buffer,
+      body: stream,
     };
 
     const response = await drive.files.create({
