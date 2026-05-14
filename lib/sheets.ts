@@ -67,6 +67,7 @@ const SHEET_NAME = process.env.GOOGLE_SHEET_TAB ?? "Hewan";
 const SUBSCRIPTION_SHEET_NAME = process.env.GOOGLE_SUBSCRIPTION_TAB ?? "Subscriptions";
 const PASSWORD_SHEET_NAME = process.env.GOOGLE_PASSWORD_TAB ?? "Password";
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? "";
+const ENV_SHEET_NAME = process.env.GOOGLE_ENV_TAB ?? "Env";
 const SERVICE_ACCOUNT_EMAIL =
   process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ??
   process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL ??
@@ -313,6 +314,42 @@ export async function updateAnimalImageUrl(id: string, imageUrl: string): Promis
   } catch (error) {
     console.error("[sheets] Failed to update animal image URL:", error);
     throw error;
+  }
+}
+
+// ── Read key/value pairs from Env sheet (A = key, B = value) ─────────────────
+export async function getEnvValue(key: string): Promise<string | null> {
+  if (!SPREADSHEET_ID) {
+    console.warn("[sheets] GOOGLE_SPREADSHEET_ID is not set — cannot read Env.");
+    return null;
+  }
+
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn("[sheets] Google service account credentials are incomplete — cannot read Env.");
+    return null;
+  }
+
+  try {
+    const sheets = getSheetsClient();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${ENV_SHEET_NAME}!A:B`,
+    });
+
+    const rows = response.data.values ?? [];
+    for (const row of rows) {
+      const rowKey = String(row?.[0] ?? "").trim();
+      if (!rowKey) continue;
+      if (rowKey === key) {
+        const val = row?.[1] ?? "";
+        return typeof val === "string" ? val : String(val);
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error("[sheets] Failed to read Env sheet:", error);
+    return null;
   }
 }
 
