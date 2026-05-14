@@ -239,7 +239,7 @@ export async function updateAnimalStatus(id: string, newStatus: AnimalStatus): P
     const sheetRow = rowIndex + 2; // Because we started from row 2
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!${COL.STATUS + 1}${sheetRow}`, // COL.STATUS is 0-based, so add 1 for column letter
+      range: `${SHEET_NAME}!${columnNumberToLetter(COL.STATUS + 1)}${sheetRow}`,
       valueInputOption: "USER_ENTERED",
       requestBody: { values: [[newStatus]] },
     });
