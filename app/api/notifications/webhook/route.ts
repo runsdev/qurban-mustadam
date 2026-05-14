@@ -15,10 +15,10 @@ function getProvidedSecret(request: Request): string {
 
 export async function POST(request: Request) {
   try {
-    const webhookSecret = process.env.GOOGLE_SHEETS_WEBHOOK_SECRET ?? "";
+    const webhookSecret = process.env.VAPID_PRIVATE_KEY ?? "";
     if (!webhookSecret) {
       return NextResponse.json(
-        { error: "GOOGLE_SHEETS_WEBHOOK_SECRET is not configured" },
+        { error: "VAPID_PRIVATE_KEY is not configured" },
         { status: 500 },
       );
     }
@@ -28,7 +28,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized webhook" }, { status: 401 });
     }
 
-    const { animalId, oldStatus, newStatus } = await request.json();
+    const payload = await request.json();
+    const animalId = String(payload?.animalId ?? payload?.token ?? payload?.id ?? "").trim();
+    const oldStatus = String(payload?.oldStatus ?? payload?.fromStatus ?? "").trim();
+    const newStatus = String(payload?.newStatus ?? payload?.status ?? "").trim();
+
     if (!animalId || !newStatus) {
       return NextResponse.json(
         { error: "animalId and newStatus are required" },

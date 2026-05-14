@@ -34,7 +34,13 @@ export type SendStatusNotificationResult = {
   success: boolean;
   message: string;
   failed: number;
+  sent: number;
+  targeted: number;
 };
+
+function normalizeAnimalId(value: string) {
+  return value.trim().replace(/^#/, "");
+}
 
 export async function sendStatusNotification({
   animalId,
@@ -45,17 +51,25 @@ export async function sendStatusNotification({
     throw new Error("VAPID keys not configured");
   }
 
-  const animal = await fetchAnimalById(animalId);
+  const normalizedAnimalId = normalizeAnimalId(animalId);
+
+  const animal = await fetchAnimalById(normalizedAnimalId);
   if (!animal) {
     throw new Error("Animal not found");
   }
 
-  const subscriptions = await getPushSubscriptionsByToken(animalId);
-  if (subscriptions.length === 0) {
+  const subscriptions = await getPushSubscriptionsByToken(normalizedAnimalId);
+  const uniqueSubscriptions = Array.from(
+    new Map(subscriptions.map((sub) => [sub.endpoint, sub])).values(),
+  );
+
+  if (uniqueSubscriptions.length === 0) {
     return {
       success: true,
       message: "No subscriptions found for this animal",
       failed: 0,
+      sent: 0,
+      targeted: 0,
     };
   }
 
@@ -77,7 +91,7 @@ export async function sendStatusNotification({
   });
 
   const results = await Promise.allSettled(
-    subscriptions.map((sub) =>
+    uniqueSubscriptions.map((sub) =>
       webpush.sendNotification(
         {
           endpoint: sub.endpoint,
@@ -96,5 +110,7 @@ export async function sendStatusNotification({
     success: true,
     message: `Notification sent to ${successful} subscriber(s)`,
     failed: results.length - successful,
+    sent: successful,
+    targeted: uniqueSubscriptions.length,
   };
 }

@@ -67,6 +67,14 @@ const SERVICE_ACCOUNT_EMAIL =
   process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL ??
   "";
 
+function normalizeToken(value: string) {
+  return value.trim().replace(/^#/, "").toLowerCase();
+}
+
+function normalizeEndpoint(value: string) {
+  return value.trim();
+}
+
 function hasGoogleSheetsCredentials() {
   return Boolean(
     process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID &&
@@ -234,21 +242,48 @@ export async function storePushSubscription(
 
   try {
     const sheets = getSheetsClient();
+    const token = subscription.token.trim();
+    const endpoint = normalizeEndpoint(subscription.endpoint);
+    const normalizedToken = normalizeToken(token);
+
+    const values = [
+      [
+        subscription.timestamp,
+        token,
+        endpoint,
+        subscription.p256dh,
+        subscription.auth,
+      ],
+    ];
+
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SUBSCRIPTION_SHEET_NAME}!A2:E`,
+    });
+
+    const rows = existing.data.values ?? [];
+    const existingIndex = rows.findIndex((row) => {
+      const rowToken = normalizeToken(String(row[SUB_COL.TOKEN] ?? ""));
+      const rowEndpoint = normalizeEndpoint(String(row[SUB_COL.ENDPOINT] ?? ""));
+      return rowToken === normalizedToken && rowEndpoint === endpoint;
+    });
+
+    if (existingIndex >= 0) {
+      const sheetRow = existingIndex + 2;
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `${SUBSCRIPTION_SHEET_NAME}!A${sheetRow}:E${sheetRow}`,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values },
+      });
+      return;
+    }
+
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
       range: `${SUBSCRIPTION_SHEET_NAME}!A:E`,
       valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [
-          [
-            subscription.timestamp,
-            subscription.token,
-            subscription.endpoint,
-            subscription.p256dh,
-            subscription.auth,
-          ],
-        ],
-      },
+      requestBody: { values },
     });
   } catch (error) {
     console.error("[sheets] Failed to store push subscription:", error);
@@ -280,7 +315,7 @@ export async function getPushSubscriptions(): Promise<PushSubscription[]> {
     });
 
     const rows = response.data.values ?? [];
-    return rows
+    const subscriptions = rows
       .map(
         (row) =>
           ({
@@ -292,6 +327,17 @@ export async function getPushSubscriptions(): Promise<PushSubscription[]> {
           }) as PushSubscription
       )
       .filter((sub) => sub.endpoint); // Only return valid subscriptions
+
+    const deduped = new Map<string, PushSubscription>();
+    for (const sub of subscriptions) {
+      const key = `${normalizeToken(sub.token)}::${normalizeEndpoint(sub.endpoint)}`;
+      const existingSub = deduped.get(key);
+      if (!existingSub || sub.timestamp > existingSub.timestamp) {
+        deduped.set(key, sub);
+      }
+    }
+
+    return Array.from(deduped.values());
   } catch (error) {
     console.error("[sheets] Failed to get push subscriptions:", error);
     return [];
@@ -316,7 +362,10 @@ export async function getPushSubscriptionsByToken(token: string): Promise<PushSu
 
   try {
     const allSubscriptions = await getPushSubscriptions();
-    return allSubscriptions.filter((sub) => sub.token === token);
+    const normalizedToken = normalizeToken(token);
+    return allSubscriptions.filter(
+      (sub) => normalizeToken(sub.token) === normalizedToken,
+    );
   } catch (error) {
     console.error("[sheets] Failed to get push subscriptions by token:", error);
     return [];

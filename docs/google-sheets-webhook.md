@@ -2,13 +2,10 @@
 
 Panduan ini membuat perubahan status di tab Hewan langsung mengirim web push notification.
 
-## 1) Tambahkan env di aplikasi
+## 1) Env sudah ada
 
-Tambahkan di .env.local dan di env production:
-
-GOOGLE_SHEETS_WEBHOOK_SECRET=isi_secret_unik_acak
-
-Contoh secret bisa dibuat dari string random panjang.
+Gunakan VAPID_PRIVATE_KEY yang sudah ada di .env.local.
+Tidak perlu env var terpisah, sehingga tidak perlu redeploy saat update.
 
 ## 2) Deploy aplikasi
 
@@ -34,7 +31,7 @@ Buka spreadsheet -> Extensions -> Apps Script, lalu tempel script berikut:
 
 ```javascript
 const WEBHOOK_URL = "https://qurtek.runsha.dev/api/notifications/webhook";
-const WEBHOOK_SECRET = "GANTI_DENGAN_SECRET_YANG_SAMA";
+const WEBHOOK_SECRET = "8l37LT8ztWKcFHqJewMZXjjHGVKEKMw-5xzYutBOkD4"; // Ganti dengan VAPID_PRIVATE_KEY dari .env.local
 
 // Sesuaikan nama tab dan index kolom bila struktur sheet berubah
 const TARGET_SHEET_NAME = "Hewan";
