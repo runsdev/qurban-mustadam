@@ -179,7 +179,7 @@ export default function PanitPage() {
                 Select Qurban Process Stage
               </label>
               <div className="grid grid-cols-2 gap-3">
-                ["Persiapan", "Disembelih", "Pengolahan", "Distribusi", "Selesai"].map((stage) => (
+                {["Persiapan", "Disembelih", "Pengolahan", "Distribusi", "Selesai"].map((stage) => (
                   <label key={stage} className="flex items-center space-x-2">
                     <input
                       type="radio"
