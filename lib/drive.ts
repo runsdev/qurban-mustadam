@@ -84,6 +84,7 @@ export async function uploadMediaToDrive({
     const response = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
+      supportsAllDrives: true,
       fields: "id, webViewLink, webContentLink",
     });
 
