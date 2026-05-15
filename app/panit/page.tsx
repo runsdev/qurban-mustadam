@@ -440,10 +440,8 @@ export default function PanitPage() {
             <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
               Kamera, Rekam, Upload ke Drive
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              Ambil foto atau video langsung dari browser, simpan ke Google Drive,
-              update spreadsheet, lalu kirim notifikasi ke shohibul.
-            </p>
+             <p className="mt-2 max-w-2xl text-sm text-slate-600">
+             </p>
           </div>
 
           <button
@@ -523,9 +521,8 @@ export default function PanitPage() {
             <section className="overflow-hidden rounded-3xl border border-white/70 bg-white/90 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
               <div className="border-b border-slate-100 px-6 py-5">
                 <h2 className="text-xl font-black text-slate-900">Media Capture</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Gunakan kamera browser untuk foto atau video. Foto diambil dari frame live, video direkam dengan MediaRecorder.
-                </p>
+                 <p className="mt-1 text-sm text-slate-600">
+                 </p>
               </div>
 
               <div className="space-y-6 p-6">
@@ -716,11 +713,10 @@ export default function PanitPage() {
                 )}
 
                 <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">
-                  {browserSupportsCamera ? (
-                    <p>
-                      Kamera siap digunakan. Pastikan halaman dibuka lewat HTTPS saat deployment.
-                    </p>
-                  ) : (
+                   {browserSupportsCamera ? (
+                     <p>
+                     </p>
+                   ) : (
                     <p>
                       Browser ini tidak mendukung akses kamera. Gunakan browser yang mendukung MediaDevices API.
                     </p>
