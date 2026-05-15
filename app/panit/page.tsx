@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const stageOptions = [
@@ -12,6 +13,12 @@ const stageOptions = [
 
 type StageOption = (typeof stageOptions)[number];
 type CaptureMode = "image" | "video";
+type CapturedMedia = {
+  id: string;
+  file: File;
+  type: CaptureMode;
+  previewUrl: string;
+};
 
 function normalizeAnimalId(value: string) {
   return value.trim().toUpperCase().replace(/^#/, "");
@@ -43,9 +50,7 @@ export default function PanitPage() {
   const [captureMode, setCaptureMode] = useState<CaptureMode | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaType, setMediaType] = useState<"" | "image" | "video">("");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [mediaItems, setMediaItems] = useState<CapturedMedia[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -54,6 +59,7 @@ export default function PanitPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const mediaItemsRef = useRef<CapturedMedia[]>([]);
 
   const browserSupportsCamera = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -90,17 +96,43 @@ export default function PanitPage() {
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
+    mediaItemsRef.current = mediaItems;
+  }, [mediaItems]);
 
-  const resetCapturedMedia = () => {
-    setMediaFile(null);
-    setMediaType("");
-    setPreviewUrl(null);
+  useEffect(() => {
+    return () => {
+      mediaItemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, []);
+
+  const clearCapturedMedia = () => {
+    setMediaItems((currentItems) => {
+      currentItems.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
+  };
+
+  const addCapturedMedia = (file: File, type: CaptureMode) => {
+    const previewUrl = URL.createObjectURL(file);
+    const mediaItem: CapturedMedia = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file,
+      type,
+      previewUrl,
+    };
+
+    setMediaItems((currentItems) => [...currentItems, mediaItem]);
+  };
+
+  const removeCapturedMedia = (id: string) => {
+    setMediaItems((currentItems) => {
+      const itemToRemove = currentItems.find((item) => item.id === id);
+      if (itemToRemove) {
+        URL.revokeObjectURL(itemToRemove.previewUrl);
+      }
+
+      return currentItems.filter((item) => item.id !== id);
+    });
   };
 
   const stopCamera = () => {
@@ -140,7 +172,6 @@ export default function PanitPage() {
     try {
       setError("");
       setSuccess("");
-      resetCapturedMedia();
       stopCamera();
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -201,10 +232,7 @@ export default function PanitPage() {
     const fileName = `${normalizeAnimalId(animalId) || "panit"}-${processStage || "foto"}-${Date.now()}.jpg`;
     const file = new File([blob], fileName, { type: blob.type || "image/jpeg" });
 
-    resetCapturedMedia();
-    setMediaFile(file);
-    setMediaType("image");
-    setPreviewUrl(URL.createObjectURL(file));
+    addCapturedMedia(file, "image");
     stopCamera();
   };
 
@@ -248,10 +276,7 @@ export default function PanitPage() {
         const fileName = `${normalizeAnimalId(animalId) || "panit"}-${processStage || "video"}-${Date.now()}.${extension}`;
         const file = new File([blob], fileName, { type: finalType });
 
-        resetCapturedMedia();
-        setMediaFile(file);
-        setMediaType("video");
-        setPreviewUrl(URL.createObjectURL(file));
+        addCapturedMedia(file, "video");
         setIsRecording(false);
         stopCamera();
       };
@@ -279,7 +304,7 @@ export default function PanitPage() {
   const handleUpload = async () => {
     const normalizedAnimalId = normalizeAnimalId(animalId);
 
-    if (!normalizedAnimalId || !processStage || !mediaFile) {
+    if (!normalizedAnimalId || !processStage || mediaItems.length === 0) {
       setError("Pilih hewan, stage proses, lalu ambil media terlebih dulu.");
       return;
     }
@@ -292,8 +317,10 @@ export default function PanitPage() {
       const formData = new FormData();
       formData.append("animalId", normalizedAnimalId);
       formData.append("processStage", processStage);
-      formData.append("mediaType", mediaType || (mediaFile.type.startsWith("video") ? "video" : "image"));
-      formData.append("mediaFile", mediaFile, mediaFile.name);
+
+      mediaItems.forEach((item) => {
+        formData.append("mediaFiles", item.file, item.file.name);
+      });
 
       const response = await fetch("/api/panit/upload", {
         method: "POST",
@@ -305,7 +332,7 @@ export default function PanitPage() {
         throw new Error(data.error || "Upload gagal");
       }
 
-      resetCapturedMedia();
+      clearCapturedMedia();
       setSuccess(data.message || "Media berhasil diupload ke Google Drive.");
     } catch (uploadError) {
       setError(
@@ -326,7 +353,7 @@ export default function PanitPage() {
     }
     recorderRef.current = null;
     recordedChunksRef.current = [];
-    resetCapturedMedia();
+    clearCapturedMedia();
     setAuthenticated(false);
     setAnimalId("");
     setProcessStage("");
@@ -397,9 +424,6 @@ export default function PanitPage() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-slate-500">
-            Password diambil dari Google Sheets tab Password.
-          </p>
         </div>
       </div>
     );
@@ -493,27 +517,6 @@ export default function PanitPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-white/70 bg-slate-950 p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.14)]">
-              <h2 className="text-lg font-black uppercase tracking-[0.22em] text-white/70">
-                Setup GDrive
-              </h2>
-              <div className="mt-4 space-y-3 text-sm text-slate-300">
-                <p>
-                  Upload memakai service account Google Drive dari environment server.
-                </p>
-                <div className="rounded-2xl bg-white/5 p-4 font-mono text-xs leading-6 text-slate-200">
-                  <div>GOOGLE_SERVICE_ACCOUNT_PROJECT_ID</div>
-                  <div>GOOGLE_SERVICE_ACCOUNT_KEY_ID</div>
-                  <div>GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY</div>
-                  <div>GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL</div>
-                  <div>GOOGLE_SERVICE_ACCOUNT_CLIENT_ID</div>
-                  <div>GOOGLE_SPREADSHEET_ID</div>
-                </div>
-                <p>
-                  Share folder atau spreadsheet ke email service account agar Drive dan Sheets bisa ditulis.
-                </p>
-              </div>
-            </section>
           </div>
 
           <div className="space-y-6 lg:col-span-8">
@@ -526,47 +529,96 @@ export default function PanitPage() {
               </div>
 
               <div className="space-y-6 p-6">
-                {previewUrl && mediaType ? (
-                  <div className="space-y-4">
-                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
-                      {mediaType === "image" ? (
-                        <img
-                          src={previewUrl}
-                          alt="Captured media"
-                          className="h-auto w-full object-cover"
-                        />
-                      ) : (
-                        <video
-                          src={previewUrl}
-                          controls
-                          className="h-auto w-full object-cover"
-                        />
-                      )}
-                    </div>
+                {mediaItems.length > 0 && (
+                  <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-black text-slate-900">Media Siap Upload</h3>
+                        <p className="text-sm text-slate-600">
+                          {mediaItems.length} file sudah masuk antrian.
+                        </p>
+                      </div>
 
-                    <div className="flex flex-wrap gap-3">
                       <button
                         type="button"
                         onClick={() => {
-                          resetCapturedMedia();
+                          clearCapturedMedia();
                           setCaptureMode(null);
                           setError("");
                         }}
                         className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
                       >
-                        Ulangi
+                        Kosongkan Antrian
+                      </button>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                      {mediaItems.map((item, index) => (
+                        <div key={item.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-[0.24em] text-slate-500">
+                                {item.type === "image" ? "Foto" : "Video"}
+                              </p>
+                              <p className="text-sm font-semibold text-slate-900">Media {index + 1}</p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => removeCapturedMedia(item.id)}
+                              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+
+                          {item.type === "image" ? (
+                            <div className="relative h-56 w-full">
+                              <Image
+                                src={item.previewUrl}
+                                alt={item.file.name}
+                                fill
+                                sizes="(max-width: 768px) 100vw, 33vw"
+                                className="object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <video src={item.previewUrl} controls className="h-56 w-full object-cover bg-black" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => openCamera("image")}
+                        disabled={uploading || !browserSupportsCamera}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Tambah Foto
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openCamera("video")}
+                        disabled={uploading || !browserSupportsCamera || !browserSupportsRecorder}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Tambah Video
                       </button>
                       <button
                         type="button"
                         onClick={handleUpload}
-                        disabled={uploading || !animalId || !processStage || !mediaFile}
+                        disabled={uploading || !animalId || !processStage || mediaItems.length === 0}
                         className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        {uploading ? "Uploading..." : "Upload ke Drive"}
+                        {uploading ? "Uploading..." : "Upload Semua"}
                       </button>
                     </div>
                   </div>
-                ) : cameraStream ? (
+                )}
+
+                {cameraStream ? (
                   <div className="space-y-4">
                     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
                       <video
@@ -681,7 +733,7 @@ export default function PanitPage() {
               <button
                 type="button"
                 onClick={handleUpload}
-                disabled={uploading || !animalId || !processStage || !mediaFile}
+                disabled={uploading || !animalId || !processStage || mediaItems.length === 0}
                 className="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 px-5 py-4 text-sm font-black uppercase tracking-[0.24em] text-white transition hover:from-slate-800 hover:via-slate-900 hover:to-indigo-900 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {uploading ? (
