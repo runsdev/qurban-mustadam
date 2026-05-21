@@ -113,7 +113,8 @@ async function transcodeVideoToMp4(file: File): Promise<{
   mimeType: string;
   buffer: Buffer;
 }> {
-  if (!ffmpegPath) {
+  const ffmpegBinary = await resolveFfmpegBinary();
+  if (!ffmpegBinary) {
     throw new Error("ffmpeg binary is not available for video conversion.");
   }
 
@@ -126,7 +127,7 @@ async function transcodeVideoToMp4(file: File): Promise<{
 
   try {
     await fs.writeFile(inputPath, sourceBuffer);
-    await runFfmpeg(ffmpegPath, inputPath, outputPath);
+    await runFfmpeg(ffmpegBinary, inputPath, outputPath);
 
     const buffer = await fs.readFile(outputPath);
     const baseName = (file.name || `upload_${Date.now()}`).replace(/\.[^.]+$/, "");
@@ -140,6 +141,29 @@ async function transcodeVideoToMp4(file: File): Promise<{
     await fs.rm(inputPath, { force: true }).catch(() => undefined);
     await fs.rm(outputPath, { force: true }).catch(() => undefined);
   }
+}
+
+async function resolveFfmpegBinary() {
+  const envPath = process.env.FFMPEG_PATH?.trim();
+  if (envPath) {
+    try {
+      await fs.access(envPath);
+      return envPath;
+    } catch {
+      console.warn(`[drive] FFMPEG_PATH is set but missing: ${envPath}`);
+    }
+  }
+
+  if (ffmpegPath) {
+    try {
+      await fs.access(ffmpegPath);
+      return ffmpegPath;
+    } catch {
+      console.warn(`[drive] ffmpeg-static binary missing at: ${ffmpegPath}`);
+    }
+  }
+
+  return "ffmpeg";
 }
 
 function runFfmpeg(ffmpegBinary: string, inputPath: string, outputPath: string) {
