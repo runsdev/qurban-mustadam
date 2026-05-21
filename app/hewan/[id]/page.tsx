@@ -14,7 +14,7 @@ const mockData: Record<string, Animal> = {
     id: "C101",
     name: "Sapi Brahman (XL)",
     species: "Sapi",
-    status: "Persiapan",
+    status: "Hewan Tiba",
     currentStage: 1,
     weight: "520 kg",
     location: "Kandang A — Kompleks Terpadu Al-Azhar, Klaten",
@@ -34,7 +34,7 @@ const mockData: Record<string, Animal> = {
     id: "G205",
     name: "Kambing Saanen",
     species: "Kambing",
-    status: "Pengolahan",
+    status: "Pengulitan",
     currentStage: 3,
     weight: "42 kg",
     location: "Fasilitas Pengolahan B — Kompleks Terpadu Al-Azhar, Klaten",
@@ -48,7 +48,7 @@ const mockData: Record<string, Animal> = {
     name: "Sapi Limousin",
     species: "Sapi",
     status: "Selesai",
-    currentStage: 5,
+    currentStage: 7,
     weight: "640 kg",
     location: "Gudang Distribusi — Kompleks Terpadu Al-Azhar, Klaten",
     shohibul: [
@@ -68,7 +68,7 @@ const mockData: Record<string, Animal> = {
     id: "S412",
     name: "Domba Merino",
     species: "Domba",
-    status: "Disembelih",
+    status: "Penyembelihan",
     currentStage: 2,
     weight: "38 kg",
     location: "Area Penyembelihan — Kompleks Terpadu Al-Azhar, Klaten",
@@ -81,31 +81,37 @@ const mockData: Record<string, Animal> = {
 
 // ── Journey stages definition ─────────────────────────────────
 const stages = [
-  { key: 1, label: "Persiapan", icon: "settings", time: "08:00 WIB" },
-  { key: 2, label: "Disembelih", icon: "content_cut", time: "09:15 WIB" },
+  { key: 1, label: "Hewan Tiba", icon: "pets", time: "08:00 WIB" },
+  { key: 2, label: "Penyembelihan", icon: "content_cut", time: "09:15 WIB" },
   {
     key: 3,
-    label: "Pengolahan",
+    label: "Pengulitan",
     icon: "conveyor_belt",
     time: "Sedang Berlangsung",
   },
-  { key: 4, label: "Distribusi", icon: "local_shipping", time: "" },
-  { key: 5, label: "Selesai", icon: "verified", time: "" },
+  { key: 4, label: "Pemisahan daging & tulang", icon: "recycling", time: "" },
+  { key: 5, label: "Pemotongan daging", icon: "content_cut", time: "" },
+  { key: 6, label: "Distribusi", icon: "local_shipping", time: "" },
+  { key: 7, label: "Selesai", icon: "verified", time: "" },
 ];
 
 // ── Status badge config ───────────────────────────────────────
 type KnownStatus =
-  | "Persiapan"
-  | "Disembelih"
-  | "Pengolahan"
+  | "Hewan Tiba"
+  | "Penyembelihan"
+  | "Pengulitan"
+  | "Pemisahan daging & tulang"
+  | "Pemotongan daging"
   | "Distribusi"
   | "Selesai";
 const statusConfig: Record<KnownStatus, { label: string; pulse: boolean }> = {
-  Persiapan: { label: "Status: Persiapan", pulse: true },
-  Pengolahan: { label: "Status: Pengolahan", pulse: true },
+  "Hewan Tiba": { label: "Status: Hewan Tiba", pulse: true },
+  Penyembelihan: { label: "Status: Penyembelihan", pulse: true },
+  Pengulitan: { label: "Status: Pengulitan", pulse: true },
+  "Pemisahan daging & tulang": { label: "Status: Pemisahan daging & tulang", pulse: true },
+  "Pemotongan daging": { label: "Status: Pemotongan daging", pulse: true },
   Distribusi: { label: "Status: Distribusi", pulse: true },
   Selesai: { label: "Status: Selesai", pulse: false },
-  Disembelih: { label: "Status: Disembelih", pulse: false },
 };
 
 // ── Page component ────────────────────────────────────────────

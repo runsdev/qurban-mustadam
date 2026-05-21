@@ -1,7 +1,12 @@
 import { google } from "googleapis";
 import { getEnvValue } from "./sheets";
 import fs from "fs/promises";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { tmpdir } from "node:os";
 import { Readable } from "node:stream";
+import ffmpegPath from "ffmpeg-static";
 
 // Google Drive API scopes
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
@@ -51,7 +56,7 @@ export async function uploadMediaToDrive({
     const sharedDriveId = isSharedDriveId(parentForAnimal) ? parentForAnimal : null;
 
     // Find or create the animal folder
-    let animalFolderId = await getOrCreateFolder(
+    const animalFolderId = await getOrCreateFolder(
       drive,
       animalId,
       parentForAnimal as string,
@@ -66,18 +71,26 @@ export async function uploadMediaToDrive({
       sharedDriveId,
     );
 
+    const uploadPayload =
+      mimeType.startsWith("video/") && mimeType !== "video/mp4"
+        ? await transcodeVideoToMp4(file)
+        : {
+            name: file.name || `upload_${Date.now()}.${mimeType.split("/")[1]}`,
+            mimeType,
+            buffer: Buffer.from(await file.arrayBuffer()),
+          };
+
     // Upload the file
     const fileMetadata = {
-      name: file.name || `upload_${Date.now()}.${mimeType.split("/")[1]}`,
+      name: uploadPayload.name,
       parents: [processFolderId],
     };
 
     // Convert Blob to a Node.js stream for googleapis upload
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const stream = Readable.from(buffer);
+    const stream = Readable.from([uploadPayload.buffer]);
 
     const media = {
-      mimeType,
+      mimeType: uploadPayload.mimeType,
       body: stream,
     };
 
@@ -93,6 +106,86 @@ export async function uploadMediaToDrive({
     console.error("[drive] Failed to upload media:", error);
     throw error;
   }
+}
+
+async function transcodeVideoToMp4(file: File): Promise<{
+  name: string;
+  mimeType: string;
+  buffer: Buffer;
+}> {
+  if (!ffmpegPath) {
+    throw new Error("ffmpeg binary is not available for video conversion.");
+  }
+
+  const workingDir = path.join(tmpdir(), "qurban-drive-transcode");
+  await fs.mkdir(workingDir, { recursive: true });
+
+  const inputPath = path.join(workingDir, `${randomUUID()}-input`);
+  const outputPath = path.join(workingDir, `${randomUUID()}-output.mp4`);
+  const sourceBuffer = Buffer.from(await file.arrayBuffer());
+
+  try {
+    await fs.writeFile(inputPath, sourceBuffer);
+    await runFfmpeg(ffmpegPath, inputPath, outputPath);
+
+    const buffer = await fs.readFile(outputPath);
+    const baseName = (file.name || `upload_${Date.now()}`).replace(/\.[^.]+$/, "");
+
+    return {
+      name: `${baseName}.mp4`,
+      mimeType: "video/mp4",
+      buffer,
+    };
+  } finally {
+    await fs.rm(inputPath, { force: true }).catch(() => undefined);
+    await fs.rm(outputPath, { force: true }).catch(() => undefined);
+  }
+}
+
+function runFfmpeg(ffmpegBinary: string, inputPath: string, outputPath: string) {
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      ffmpegBinary,
+      [
+        "-y",
+        "-i",
+        inputPath,
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-pix_fmt",
+        "yuv420p",
+        "-movflags",
+        "+faststart",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        outputPath,
+      ],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
+
+    let errorOutput = "";
+    child.stderr?.on("data", (chunk) => {
+      errorOutput += chunk.toString();
+    });
+
+    child.once("error", reject);
+    child.once("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(
+        new Error(
+          `ffmpeg exited with code ${code ?? "unknown"}: ${errorOutput.trim()}`,
+        ),
+      );
+    });
+  });
 }
 
 async function resolveDriveCredentials(): Promise<{
@@ -204,8 +297,21 @@ async function readCredentialsFromEnvSheet(): Promise<{
 }
 
 // Helper function to get or create a folder in Google Drive
+type DriveFolderClient = {
+  files: {
+    list(options: Record<string, unknown>): Promise<{
+      data: { files?: Array<{ id?: string | null; name?: string | null }> };
+    }>;
+    create(options: {
+      requestBody: Record<string, unknown>;
+      fields?: string;
+      supportsAllDrives?: boolean;
+    }): Promise<{ data: { id?: string | null } }>;
+  };
+};
+
 async function getOrCreateFolder(
-  drive: any,
+  drive: DriveFolderClient,
   folderName: string,
   parentFolderId: string,
   sharedDriveId?: string | null,
@@ -226,8 +332,8 @@ async function getOrCreateFolder(
 
     const response = await drive.files.list(listOptions);
 
-    const folders = response.data.files;
-    if (folders.length > 0) {
+    const folders = response.data.files ?? [];
+    if (folders.length > 0 && folders[0]?.id) {
       return folders[0].id;
     }
 
@@ -244,7 +350,7 @@ async function getOrCreateFolder(
       supportsAllDrives: true,
     });
 
-    return folderResponse.data.id;
+    return folderResponse.data.id ?? parentFolderId;
   } catch (error) {
     console.error("[drive] Error in getOrCreateFolder:", error);
     throw error;

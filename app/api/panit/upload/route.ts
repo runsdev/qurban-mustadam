@@ -13,9 +13,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const allowedStatuses: AnimalStatus[] = [
-  "Persiapan",
-  "Disembelih",
-  "Pengolahan",
+  "Hewan Tiba",
+  "Penyembelihan",
+  "Pengulitan",
+  "Pemisahan daging & tulang",
+  "Pemotongan daging",
   "Distribusi",
   "Selesai",
 ];
@@ -30,11 +32,15 @@ function isAllowedStatus(value: string): value is AnimalStatus {
 
 function getNextStatus(stage: AnimalStatus): AnimalStatus {
   switch (stage) {
-    case "Persiapan":
-      return "Disembelih";
-    case "Disembelih":
-      return "Pengolahan";
-    case "Pengolahan":
+    case "Hewan Tiba":
+      return "Penyembelihan";
+    case "Penyembelihan":
+      return "Pengulitan";
+    case "Pengulitan":
+      return "Pemisahan daging & tulang";
+    case "Pemisahan daging & tulang":
+      return "Pemotongan daging";
+    case "Pemotongan daging":
       return "Distribusi";
     case "Distribusi":
       return "Selesai";

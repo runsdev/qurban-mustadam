@@ -16,12 +16,13 @@ if (vapidKeys.publicKey && vapidKeys.privateKey) {
 }
 
 const statusLabels: Record<string, string> = {
-  Persiapan: "dalam persiapan",
-  Disembelih: "telah disembelih",
-  Penyembelihan: "sedang disembelih",
-  Pengolahan: "sedang dalam proses pengolahan",
+  "Hewan Tiba": "telah tiba di lokasi",
+  Penyembelihan: "sedang dalam proses penyembelihan",
+  Pengulitan: "sedang dalam proses pengulitan",
+  "Pemisahan daging & tulang": "sedang dalam proses pemisahan daging dan tulang",
+  "Pemotongan daging": "sedang dalam proses pemotongan daging",
   Distribusi: "sedang dalam proses distribusi",
-  Selesai: "telah selesai dan siap untuk distribusi",
+  Selesai: "telah selesai",
 };
 
 export type SendStatusNotificationInput = {

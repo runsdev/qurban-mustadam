@@ -15,7 +15,6 @@ function useCountUp(target: number, duration = 1200) {
   useEffect(() => {
     startRef.current = null;
     if (target === 0) {
-      setValue(0);
       return;
     }
 
@@ -67,22 +66,38 @@ const statusCfg: Record<
     pulse?: boolean;
   }
 > = {
-  Persiapan: {
-    label: "Persiapan",
+  "Hewan Tiba": {
+    label: "Hewan Tiba",
     badgeCls: "bg-surface-container-high text-primary",
     btnText: "Lihat Detail",
     btnCls:
       "border border-outline-variant hover:border-primary hover:text-primary",
   },
-  Disembelih: {
-    label: "Sudah Disembelih",
+  Penyembelihan: {
+    label: "Penyembelihan",
     badgeCls: "bg-surface-container-high text-primary",
     btnText: "Lihat Laporan",
     btnCls:
       "border border-outline-variant hover:border-primary hover:text-primary",
   },
-  Pengolahan: {
-    label: "Pengolahan",
+  Pengulitan: {
+    label: "Pengulitan",
+    badgeCls: "bg-secondary-container text-on-secondary-container",
+    btnText: "Lihat Laporan",
+    btnCls:
+      "border border-outline-variant hover:border-primary hover:text-primary",
+    pulse: true,
+  },
+  "Pemisahan daging & tulang": {
+    label: "Pemisahan daging & tulang",
+    badgeCls: "bg-secondary-container text-on-secondary-container",
+    btnText: "Lihat Laporan",
+    btnCls:
+      "border border-outline-variant hover:border-primary hover:text-primary",
+    pulse: true,
+  },
+  "Pemotongan daging": {
+    label: "Pemotongan daging",
     badgeCls: "bg-secondary-container text-on-secondary-container",
     btnText: "Lihat Laporan",
     btnCls:
@@ -107,10 +122,12 @@ const statusCfg: Record<
 
 // Status → progress bar width % (5 stages)
 const STATUS_PERCENT: Record<AnimalStatus, number> = {
-  Persiapan: 20,
-  Disembelih: 40,
-  Pengolahan: 60,
-  Distribusi: 80,
+  "Hewan Tiba": 14,
+  Penyembelihan: 29,
+  Pengulitan: 43,
+  "Pemisahan daging & tulang": 57,
+  "Pemotongan daging": 71,
+  Distribusi: 86,
   Selesai: 100,
 };
 
@@ -301,6 +318,13 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
 
    const [filterLokasi, setFilterLokasi] = useState("");
 
+   const showNotification = useCallback(() => {
+     const options = {
+       body: 'Update terbaru: Hewan sedang dalam proses pengolahan. Cek detail untuk informasi lebih lanjut.',
+     };
+     new Notification('Notifikasi Qurban Tek', options);
+   }, []);
+
    // Notification handler
    const handleLogoClick = useCallback(async () => {
      if (!('Notification' in window)) {
@@ -316,14 +340,7 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
          showNotification();
        }
      }
-   }, []);
-
-   const showNotification = useCallback(() => {
-     const options = {
-       body: 'Update terbaru: Hewan sedang dalam proses pengolahan. Cek detail untuk informasi lebih lanjut.',
-     };
-     new Notification('Notifikasi Qurban Tek', options);
-   }, []);
+  }, [showNotification]);
 
    const filtered = useMemo(() => {
     return animals.filter((a) => {
@@ -475,18 +492,28 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
               [
                 {
                   icon: "settings",
-                  label: "Sedang Diproses",
-                  status: "Persiapan",
+                    label: "Hewan Tiba",
+                    status: "Hewan Tiba",
                 },
                 {
                   icon: "content_cut",
-                  label: "Sudah Disembelih",
-                  status: "Disembelih",
+                    label: "Penyembelihan",
+                    status: "Penyembelihan",
                 },
                 {
                   icon: "conveyor_belt",
-                  label: "Pengolahan",
-                  status: "Pengolahan",
+                    label: "Pengulitan",
+                    status: "Pengulitan",
+                },
+                {
+                    icon: "category",
+                    label: "Pemisahan daging & tulang",
+                    status: "Pemisahan daging & tulang",
+                },
+                {
+                    icon: "content_cut",
+                    label: "Pemotongan daging",
+                    status: "Pemotongan daging",
                 },
                 {
                   icon: "local_shipping",
@@ -753,9 +780,11 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                               onChange={(e) => setFilterStatus(e.target.value)}
                             >
                               <option value="">Semua Status</option>
-                              <option value="Persiapan">Sedang Diproses</option>
-                              <option value="Disembelih">Sudah Disembelih</option>
-                              <option value="Pengolahan">Pengolahan</option>
+                              <option value="Hewan Tiba">Hewan Tiba</option>
+                              <option value="Penyembelihan">Penyembelihan</option>
+                              <option value="Pengulitan">Pengulitan</option>
+                              <option value="Pemisahan daging & tulang">Pemisahan daging & tulang</option>
+                              <option value="Pemotongan daging">Pemotongan daging</option>
                               <option value="Distribusi">Distribusi</option>
                               <option value="Selesai">Selesai</option>
                             </select>

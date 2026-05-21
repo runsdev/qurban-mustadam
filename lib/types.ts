@@ -7,16 +7,18 @@
  * "Status" column of the Google Sheet exactly.
  */
 export type AnimalStatus =
-  | "Persiapan"
-  | "Disembelih"
-  | "Pengolahan"
+  | "Hewan Tiba"
+  | "Penyembelihan"
+  | "Pengulitan"
+  | "Pemisahan daging & tulang"
+  | "Pemotongan daging"
   | "Distribusi"
   | "Selesai";
 
 /**
- * Journey stage index (1–5), derived automatically from Status.
+ * Journey stage index (1–7), derived automatically from Status.
  */
-export type StageIndex = 1 | 2 | 3 | 4 | 5;
+export type StageIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /**
  * One row from the "Hewan" sheet.

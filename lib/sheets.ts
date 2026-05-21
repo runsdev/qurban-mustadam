@@ -25,7 +25,7 @@
 //  • Shohibul  → names separated by " | "  (pipe with spaces)
 //               e.g.  "Bapak Ahmad | Ibu Siti | Keluarga Al-Fatih"
 //  • Tahap     → REMOVED — derived automatically from status
-//  • Status    → one of: Persiapan | Disembelih | Pengolahan | Distribusi | Selesai
+//  • Status    → one of: Hewan Tiba | Penyembelihan | Pengulitan | Pemisahan daging & tulang | Pemotongan daging | Distribusi | Selesai
 //  • Berat     → number only, kilograms (the UI will append " kg")
 //
 // SHEET STRUCTURE — "Password" tab
@@ -113,11 +113,13 @@ function getSheetsClient() {
 
 // ── Status → Stage mapping (stage is derived from status) ────
 const STATUS_STAGE: Record<string, StageIndex> = {
-  Persiapan: 1,
-  Disembelih: 2,
-  Pengolahan: 3,
-  Distribusi: 4,
-  Selesai: 5,
+  "Hewan Tiba": 1,
+  Penyembelihan: 2,
+  Pengulitan: 3,
+  "Pemisahan daging & tulang": 4,
+  "Pemotongan daging": 5,
+  Distribusi: 6,
+  Selesai: 7,
 };
 
 // ── Parse a raw sheet row into an Animal object ───────────────
@@ -389,11 +391,11 @@ export function computeStats(animals: Animal[]): SummaryStats {
   const total = animals.length;
   const completed = animals.filter((a) => a.status === "Selesai").length;
 
-  // Progress = sum of each animal's stage progress / max possible (total × 5)
-  // Each stage maps 1–5, so full completion per animal = 5
+  // Progress = sum of each animal's stage progress / max possible (total × 7)
+  // Each stage maps 1–7, so full completion per animal = 7
   const stageSum = animals.reduce((sum, a) => sum + (a.currentStage ?? 1), 0);
   const progressPercent =
-    total > 0 ? Math.round((stageSum / (total * 5)) * 100) : 0;
+    total > 0 ? Math.round((stageSum / (total * 7)) * 100) : 0;
 
   const totalWeightKg = animals.reduce((sum, a) => {
     const num = parseFloat(a.weight.replace(/[^\d.]/g, ""));

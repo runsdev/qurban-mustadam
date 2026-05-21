@@ -4,9 +4,11 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 const stageOptions = [
-  "Persiapan",
-  "Disembelih",
-  "Pengolahan",
+  "Hewan Tiba",
+  "Penyembelihan",
+  "Pengulitan",
+  "Pemisahan daging & tulang",
+  "Pemotongan daging",
   "Distribusi",
   "Selesai",
 ] as const;
@@ -34,10 +36,10 @@ function getSupportedVideoMimeType() {
   }
 
   const candidates = [
+    "video/mp4",
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
     "video/webm",
-    "video/mp4",
   ];
 
   return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? "";
