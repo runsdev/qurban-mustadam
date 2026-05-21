@@ -308,6 +308,18 @@ type DriveFolderClient = {
       supportsAllDrives?: boolean;
     }): Promise<{ data: { id?: string | null } }>;
   };
+  permissions: {
+    create(options: {
+      fileId: string;
+      requestBody: {
+        type: "anyone";
+        role: "reader";
+        allowFileDiscovery: boolean;
+      };
+      sendNotificationEmail?: boolean;
+      supportsAllDrives?: boolean;
+    }): Promise<unknown>;
+  };
 };
 
 async function getOrCreateFolder(
@@ -334,7 +346,9 @@ async function getOrCreateFolder(
 
     const folders = response.data.files ?? [];
     if (folders.length > 0 && folders[0]?.id) {
-      return folders[0].id;
+      const existingFolderId = folders[0].id;
+      await ensurePublicFolderLink(drive, existingFolderId, sharedDriveId);
+      return existingFolderId;
     }
 
     // Create new folder if not found
@@ -350,11 +364,37 @@ async function getOrCreateFolder(
       supportsAllDrives: true,
     });
 
-    return folderResponse.data.id ?? parentFolderId;
+    const createdFolderId = folderResponse.data.id ?? parentFolderId;
+    await ensurePublicFolderLink(drive, createdFolderId, sharedDriveId);
+    return createdFolderId;
   } catch (error) {
     console.error("[drive] Error in getOrCreateFolder:", error);
     throw error;
   }
+}
+
+async function ensurePublicFolderLink(
+  drive: DriveFolderClient,
+  folderId: string,
+  sharedDriveId?: string | null,
+) {
+  const permissionOptions = {
+    fileId: folderId,
+    requestBody: {
+      type: "anyone" as const,
+      role: "reader" as const,
+      allowFileDiscovery: false,
+    },
+    sendNotificationEmail: false,
+    supportsAllDrives: true,
+  };
+
+  if (sharedDriveId) {
+    await drive.permissions.create(permissionOptions);
+    return;
+  }
+
+  await drive.permissions.create(permissionOptions);
 }
 
 function isSharedDriveId(value: string) {
