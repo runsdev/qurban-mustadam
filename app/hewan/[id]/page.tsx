@@ -326,15 +326,15 @@ export default async function HewanDetailPage({
               Perjalanan Ibadah
             </h3>
             <span className="text-sm font-bold text-secondary">
-              Tahap {currentStage} dari 5
+              Tahap {currentStage} dari {stages.length}
             </span>
           </div>
 
-          <div className="relative">
-            {/* Horizontal track (desktop) */}
-            <div className="absolute top-7 left-0 w-full h-1 bg-surface-container-highest rounded-full hidden md:block" />
+          <div className="relative overflow-x-auto pb-4">
+            {/* Horizontal track */}
+            <div className="absolute top-7 left-0 w-full h-1 bg-surface-container-highest rounded-full" />
 
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-4 relative">
+            <div className="grid grid-cols-7 gap-4 min-w-[980px] relative">
               {stages.map((stage) => {
                 const isDone = stage.key < currentStage;
                 const isCurrent = stage.key === currentStage;
@@ -379,7 +379,7 @@ export default async function HewanDetailPage({
                     <div className="text-center">
                       <h4
                         className={[
-                          "font-bold text-xs uppercase tracking-tighter",
+                          "font-bold text-[10px] uppercase tracking-tighter leading-tight",
                           isCurrent
                             ? "text-primary"
                             : isDone
