@@ -11,8 +11,10 @@ import ffmpegPath from "ffmpeg-static";
 // Google Drive API scopes
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
-// Folder structure: /(id hewan)/(proses qurban)/
+// Folder structure: /Dokumentasi Hewan Qurban/(id hewan)/(proses qurban)/
 // We'll create folders if they don't exist
+
+const DOCUMENTATION_ROOT_FOLDER_NAME = "Dokumentasi Hewan Qurban";
 
 export async function uploadMediaToDrive({
   animalId,
@@ -55,11 +57,18 @@ export async function uploadMediaToDrive({
     const parentForAnimal = parentFolderId ?? rootParent ?? "root";
     const sharedDriveId = isSharedDriveId(parentForAnimal) ? parentForAnimal : null;
 
+    const documentationRootFolderId = await getOrCreateFolder(
+      drive,
+      DOCUMENTATION_ROOT_FOLDER_NAME,
+      parentForAnimal as string,
+      sharedDriveId,
+    );
+
     // Find or create the animal folder
     const animalFolderId = await getOrCreateFolder(
       drive,
       animalId,
-      parentForAnimal as string,
+      documentationRootFolderId,
       sharedDriveId,
     );
 
@@ -160,6 +169,30 @@ async function resolveFfmpegBinary() {
       return ffmpegPath;
     } catch {
       console.warn(`[drive] ffmpeg-static binary missing at: ${ffmpegPath}`);
+    }
+  }
+
+  const envSheetPath = (await getEnvValue("FFMPEG_PATH"))?.trim();
+  if (envSheetPath) {
+    try {
+      await fs.access(envSheetPath);
+      return envSheetPath;
+    } catch {
+      console.warn(`[drive] Env sheet FFMPEG_PATH is set but missing: ${envSheetPath}`);
+    }
+  }
+
+  const fallbackCandidates =
+    process.platform === "win32"
+      ? ["C:\\ffmpeg\\bin\\ffmpeg.exe", "C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe"]
+      : ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/opt/homebrew/bin/ffmpeg"];
+
+  for (const candidate of fallbackCandidates) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // Try the next known location.
     }
   }
 
