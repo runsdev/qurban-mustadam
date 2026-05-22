@@ -83,12 +83,8 @@ export async function uploadMediaToDrive({
 
     const uploadPayload =
       mimeType.startsWith("video/") && mimeType !== "video/mp4"
-        ? await transcodeVideoToMp4(file)
-        : {
-            name: file.name || `upload_${Date.now()}.${mimeType.split("/")[1]}`,
-            mimeType,
-            buffer: Buffer.from(await file.arrayBuffer()),
-          };
+        ? await prepareVideoUpload(file, mimeType)
+        : await createRawUploadPayload(file, mimeType);
 
     // Upload the file
     const fileMetadata = {
@@ -151,6 +147,27 @@ async function transcodeVideoToMp4(file: File): Promise<{
     await fs.rm(inputPath, { force: true }).catch(() => undefined);
     await fs.rm(outputPath, { force: true }).catch(() => undefined);
   }
+}
+
+async function prepareVideoUpload(file: File, originalMimeType: string) {
+  try {
+    return await transcodeVideoToMp4(file);
+  } catch (error) {
+    console.warn(
+      "[drive] Video transcode failed, uploading original file instead:",
+      error,
+    );
+
+    return createRawUploadPayload(file, originalMimeType);
+  }
+}
+
+async function createRawUploadPayload(file: File, mimeType: string) {
+  return {
+    name: file.name || `upload_${Date.now()}.${mimeType.split("/")[1]}`,
+    mimeType,
+    buffer: Buffer.from(await file.arrayBuffer()),
+  };
 }
 
 async function resolveFfmpegBinary() {
