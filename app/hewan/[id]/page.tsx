@@ -203,7 +203,7 @@ export default async function HewanDetailPage({
       </header>
 
       {/* ── Main Content ── */}
-      <main className="pt-8 px-6 lg:px-12 max-w-6xl mx-auto space-y-12 pb-32 lg:pb-24">
+      <main className="pt-8 px-6 lg:px-12 max-w-6xl mx-auto space-y-12 pb-32 lg:pb-24 w-full overflow-hidden sm:overflow-visible">
         {/* ── Hero: Animal Identification ── */}
         <section className="relative">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
@@ -221,7 +221,7 @@ export default async function HewanDetailPage({
               </div>
 
               {/* Giant ID */}
-              <h1 className="text-6xl md:text-8xl font-black text-primary tracking-tighter leading-none font-headline">
+              <h1 className="text-6xl md:text-8xl font-black text-primary tracking-tighter leading-none font-headline break-all sm:break-words">
                 #{animal.id}
               </h1>
 
@@ -320,8 +320,8 @@ export default async function HewanDetailPage({
         </section>
 
         {/* ── Visual Journey / Timeline ── */}
-        <section className="space-y-8">
-          <div className="flex items-baseline justify-between border-b border-outline-variant/20 pb-4">
+        <section className="space-y-8 w-full max-w-full">
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-outline-variant/20 pb-4 gap-2">
             <h3 className="text-3xl font-headline text-primary">
               Perjalanan Ibadah
             </h3>
@@ -330,11 +330,12 @@ export default async function HewanDetailPage({
             </span>
           </div>
 
-          <div className="relative overflow-x-auto pb-4">
-            {/* Horizontal track */}
-            <div className="absolute top-7 left-0 w-full h-1 bg-surface-container-highest rounded-full" />
+          <div className="w-full max-w-[100vw] overflow-x-auto pb-4 lg:mx-0">
+            <div className="relative min-w-[800px] md:min-w-[980px] pt-1 px-4 lg:px-0">
+              {/* Horizontal track */}
+              <div className="absolute top-8 left-10 right-10 h-1 bg-surface-container-highest rounded-full" />
 
-            <div className="grid grid-cols-7 gap-4 min-w-[980px] relative">
+              <div className="grid grid-cols-7 gap-2 relative">
               {stages.map((stage) => {
                 const isDone = stage.key < currentStage;
                 const isCurrent = stage.key === currentStage;
@@ -403,10 +404,11 @@ export default async function HewanDetailPage({
               })}
             </div>
           </div>
+          </div>
         </section>
 
         {/* ── Location Footer ── */}
-        <section className="bg-surface-container-low rounded-[3rem] p-12 text-center space-y-4">
+        <section className="bg-surface-container-low rounded-3xl sm:rounded-[3rem] p-6 sm:p-12 text-center space-y-4">
           <h3 className="text-2xl font-headline text-primary">
             Lokasi Pelaksanaan
           </h3>
