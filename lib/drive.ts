@@ -6,7 +6,8 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { Readable } from "node:stream";
-import ffmpegPath from "ffmpeg-static";
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import ffmpegStaticPath from "ffmpeg-static";
 
 // Google Drive API scopes
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
@@ -163,12 +164,22 @@ async function resolveFfmpegBinary() {
     }
   }
 
-  if (ffmpegPath) {
+  const installerPath = ffmpegInstaller?.path?.trim();
+  if (installerPath) {
     try {
-      await fs.access(ffmpegPath);
-      return ffmpegPath;
+      await fs.access(installerPath);
+      return installerPath;
     } catch {
-      console.warn(`[drive] ffmpeg-static binary missing at: ${ffmpegPath}`);
+      console.warn(`[drive] @ffmpeg-installer binary missing at: ${installerPath}`);
+    }
+  }
+
+  if (ffmpegStaticPath) {
+    try {
+      await fs.access(ffmpegStaticPath);
+      return ffmpegStaticPath;
+    } catch {
+      console.warn(`[drive] ffmpeg-static binary missing at: ${ffmpegStaticPath}`);
     }
   }
 
