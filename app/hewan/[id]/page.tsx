@@ -330,77 +330,12 @@ export default async function HewanDetailPage({
             </span>
           </div>
 
-          <div className="space-y-3 sm:hidden">
-            {stages.map((stage) => {
-              const isDone = stage.key < currentStage;
-              const isCurrent = stage.key === currentStage;
-
-              return (
-                <div
-                  key={stage.key}
-                  className={[
-                    "flex items-center gap-3 rounded-2xl border p-4 bg-surface-container-low",
-                    isCurrent
-                      ? "border-primary/30 bg-primary/5"
-                      : isDone
-                        ? "border-secondary/20"
-                        : "border-outline-variant/20 opacity-70",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  <div
-                    className={[
-                      "w-11 h-11 rounded-full flex items-center justify-center shrink-0",
-                      isCurrent
-                        ? "bg-primary text-white"
-                        : isDone
-                          ? "bg-secondary-container text-on-secondary-container"
-                          : "bg-surface-container-high text-outline",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    <span
-                      className="material-symbols-outlined text-base"
-                      style={isDone ? { fontVariationSettings: '"FILL" 1' } : undefined}
-                    >
-                      {isDone ? "check_circle" : stage.icon}
-                    </span>
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div
-                      className={[
-                        "text-sm font-black uppercase tracking-tight leading-tight break-words",
-                        isCurrent
-                          ? "text-primary"
-                          : isDone
-                            ? "text-secondary"
-                            : "text-on-surface-variant",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      {stage.label}
-                    </div>
-                    {stage.time && (
-                      <p className="text-[11px] font-bold text-on-surface-variant mt-1">
-                        {stage.time}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="hidden sm:block w-full max-w-[100vw] overflow-x-auto pb-4 lg:mx-0">
-            <div className="relative min-w-[800px] md:min-w-[980px] pt-1 px-4 lg:px-0">
+          <div className="w-full max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x pb-4">
+            <div className="relative min-w-[760px] sm:min-w-[920px] md:min-w-[980px] pt-1 px-4 sm:px-6 lg:px-0">
               {/* Horizontal track */}
               <div className="absolute top-8 left-10 right-10 h-1 bg-surface-container-highest rounded-full" />
 
-              <div className="grid grid-cols-7 gap-2 relative">
+              <div className="grid grid-cols-7 gap-2 sm:gap-3 relative">
                 {stages.map((stage) => {
                   const isDone = stage.key < currentStage;
                   const isCurrent = stage.key === currentStage;
