@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { uploadMediaToDrive } from "@/lib/drive";
 import {
   fetchAnimalById,
+  upsertStageFirstDocumentationTime,
   updateAnimalDriveUrl,
   updateAnimalImageUrl,
   updateAnimalStatus,
@@ -28,25 +29,6 @@ function normalizeAnimalId(value: string) {
 
 function isAllowedStatus(value: string): value is AnimalStatus {
   return allowedStatuses.includes(value as AnimalStatus);
-}
-
-function getNextStatus(stage: AnimalStatus): AnimalStatus {
-  switch (stage) {
-    case "Hewan Tiba":
-      return "Penyembelihan";
-    case "Penyembelihan":
-      return "Pengulitan";
-    case "Pengulitan":
-      return "Pemisahan daging & tulang";
-    case "Pemisahan daging & tulang":
-      return "Pemotongan daging";
-    case "Pemotongan daging":
-      return "Distribusi";
-    case "Distribusi":
-      return "Selesai";
-    case "Selesai":
-      return "Selesai";
-  }
 }
 
 function getStatusIndex(stage: AnimalStatus) {
@@ -118,10 +100,18 @@ export async function POST(request: Request) {
       await updateAnimalImageUrl(animalId, imageUrl);
     }
 
-    const selectedIndex = getStatusIndex(processStage);
+    const selectedStatus = processStage;
+    const selectedIndex = getStatusIndex(selectedStatus);
     const currentIndex = getStatusIndex(animal.status);
-    const targetStatus = getNextStatus(processStage);
+    const targetStatus = selectedStatus;
     const shouldIgnoreStatusUpdate = currentIndex > selectedIndex;
+    const firstDocumentationTimestamp = new Date().toISOString();
+
+    await upsertStageFirstDocumentationTime(
+      animalId,
+      selectedStatus,
+      firstDocumentationTimestamp,
+    );
 
     let notificationResult = {
       success: true,

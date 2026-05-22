@@ -9,6 +9,7 @@ A live tracking web application for Qurban (Islamic sacrifice) animal processing
 - Overall progress summary (weighted average across all animals)
 - Filterable animal list by ID, species, status, and location
 - **Push notification system for real-time updates on animal status changes**
+- Acara scanner page for barcode validation and weekly NIM check, writing successful scans to a `makan` tab
 - Data is read from Google Sheets via a service account — no database required
 
 ## Tech Stack
@@ -49,6 +50,13 @@ For push notifications, the app also uses a `Subscriptions` tab (configurable vi
 | D   | p256dh       | P-256dh key                                |
 | E   | Auth         | Auth key                                   |
 
+The acara scanner flow uses two additional tabs in the same spreadsheet:
+
+| Tab name | Purpose |
+| --- | --- |
+| `Mahasiswa` | Database of valid NIM values in column A by default, configurable via `GOOGLE_ACARA_DB_TAB` |
+| `makan` | Scan log with timestamp in column A and NIM in column B, configurable via `GOOGLE_ACARA_MAKAN_TAB` |
+
 ## Getting Started
 
 ### 1. Clone and install
@@ -74,6 +82,8 @@ Required variables:
 GOOGLE_SPREADSHEET_ID=      # From the sheet URL
 GOOGLE_SHEET_TAB=Hewan      # Tab name for animal data (default: Hewan)
 GOOGLE_SUBSCRIPTION_TAB=Subscriptions  # Tab name for push subscriptions (default: Subscriptions)
+GOOGLE_ACARA_DB_TAB=Mahasiswa           # Tab name for acara NIM database (default: Mahasiswa)
+GOOGLE_ACARA_MAKAN_TAB=makan            # Tab name for acara scan log (default: makan)
 GOOGLE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_SERVICE_ACCOUNT_CLIENT_ID=
 GOOGLE_SERVICE_ACCOUNT_PROJECT_ID=
@@ -97,6 +107,7 @@ VAPID_SUBJECT=mailto:admin@yourdomain.com  # Mailto link for VAPID
    - `Hewan` (or whatever you set in `GOOGLE_SHEET_TAB`) for animal data
    - `Subscriptions` (or whatever you set in `GOOGLE_SUBSCRIPTION_TAB`) for push subscriptions
 6. Add header rows to both tabs as described in the Sheet Structure section above.
+7. For the acara scanner, add a `Mahasiswa` tab with valid NIM values in column A and a `makan` tab with timestamp and NIM columns.
 
 ### 4. Run the development server
 
@@ -139,6 +150,20 @@ POST /api/notifications/send
 Body: { animalId: string, oldStatus?: string, newStatus: string }
 ```
 Sends a formatted notification about a status change to all subscribers of the specific animal.
+
+#### Acara Login
+```
+POST /api/acara/login
+Body: { password: string }
+```
+Validates the same 6-digit password stored in the `Password` sheet tab.
+
+#### Acara Scan
+```
+POST /api/acara/scan
+Body: { barcode: string }
+```
+Validates the barcode, checks whether the NIM exists in the acara database tab, prevents reuse within the same Monday-to-Sunday week, and appends successful scans to the `makan` tab.
 
 #### Secure Webhook for Spreadsheet Automation
 ```

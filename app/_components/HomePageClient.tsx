@@ -66,6 +66,13 @@ const statusCfg: Record<
     pulse?: boolean;
   }
 > = {
+  "Belum Dimulai": {
+    label: "Menunggu Dokumentasi",
+    badgeCls: "bg-surface-container-high text-on-surface-variant",
+    btnText: "Lihat Detail",
+    btnCls:
+      "border border-outline-variant hover:border-primary hover:text-primary",
+  },
   "Hewan Tiba": {
     label: "Hewan Tiba",
     badgeCls: "bg-surface-container-high text-primary",
@@ -122,6 +129,7 @@ const statusCfg: Record<
 
 // Status → progress bar width % (5 stages)
 const STATUS_PERCENT: Record<AnimalStatus, number> = {
+  "Belum Dimulai": 0,
   "Hewan Tiba": 14,
   Penyembelihan: 29,
   Pengulitan: 43,

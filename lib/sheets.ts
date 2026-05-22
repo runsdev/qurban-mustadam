@@ -35,7 +35,14 @@
 // ============================================================
 
 import { google } from "googleapis";
-import type { Animal, AnimalStatus, StageIndex, SummaryStats, PushSubscription } from "./types";
+import type {
+  Animal,
+  AnimalStatus,
+  StageIndex,
+  StageTrackableStatus,
+  SummaryStats,
+  PushSubscription,
+} from "./types";
 
 // ── Column indices (0-based) matching the sheet layout above ──
 const COL = {
@@ -113,6 +120,7 @@ function getSheetsClient() {
 
 // ── Status → Stage mapping (stage is derived from status) ────
 const STATUS_STAGE: Record<string, StageIndex> = {
+  "Belum Dimulai": 0,
   "Hewan Tiba": 1,
   Penyembelihan: 2,
   Pengulitan: 3,
@@ -121,6 +129,144 @@ const STATUS_STAGE: Record<string, StageIndex> = {
   Distribusi: 6,
   Selesai: 7,
 };
+
+const TRACKABLE_STAGES: StageTrackableStatus[] = [
+  "Hewan Tiba",
+  "Penyembelihan",
+  "Pengulitan",
+  "Pemisahan daging & tulang",
+  "Pemotongan daging",
+  "Distribusi",
+  "Selesai",
+];
+
+const NOTES_TRACKING_META_PREFIX = "[[tracking-meta]]";
+
+type TrackingMeta = {
+  firstDocumentationAt?: Partial<Record<StageTrackableStatus, string>>;
+};
+
+function isAnimalStatus(value: string): value is AnimalStatus {
+  return value in STATUS_STAGE;
+}
+
+function isTrackableStage(value: string): value is StageTrackableStatus {
+  return TRACKABLE_STAGES.includes(value as StageTrackableStatus);
+}
+
+function parseNotesCell(rawNotes: string) {
+  const markerIndex = rawNotes.indexOf(NOTES_TRACKING_META_PREFIX);
+  if (markerIndex < 0) {
+    return {
+      plainNotes: rawNotes.trim() || undefined,
+      stageTimestamps: {} as Partial<Record<StageTrackableStatus, string>>,
+    };
+  }
+
+  const plainNotes = rawNotes.slice(0, markerIndex).trim() || undefined;
+  const serializedMeta = rawNotes
+    .slice(markerIndex + NOTES_TRACKING_META_PREFIX.length)
+    .trim();
+
+  if (!serializedMeta) {
+    return {
+      plainNotes,
+      stageTimestamps: {} as Partial<Record<StageTrackableStatus, string>>,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(serializedMeta) as TrackingMeta;
+    const parsedStageMap = parsed.firstDocumentationAt ?? {};
+    const sanitized = Object.entries(parsedStageMap).reduce(
+      (acc, [stage, timestamp]) => {
+        if (isTrackableStage(stage) && typeof timestamp === "string" && timestamp.trim()) {
+          acc[stage] = timestamp;
+        }
+        return acc;
+      },
+      {} as Partial<Record<StageTrackableStatus, string>>,
+    );
+
+    return {
+      plainNotes,
+      stageTimestamps: sanitized,
+    };
+  } catch {
+    return {
+      plainNotes: rawNotes.trim() || undefined,
+      stageTimestamps: {} as Partial<Record<StageTrackableStatus, string>>,
+    };
+  }
+}
+
+function buildNotesCell(
+  plainNotes: string | undefined,
+  stageTimestamps: Partial<Record<StageTrackableStatus, string>>,
+) {
+  const hasStageMeta = Object.keys(stageTimestamps).length > 0;
+  const cleanPlainNotes = plainNotes?.trim();
+
+  if (!hasStageMeta) {
+    return cleanPlainNotes ?? "";
+  }
+
+export async function getSheetValues(
+  sheetName: string,
+  range: string,
+): Promise<(string | null | undefined)[][]> {
+  if (!SPREADSHEET_ID) {
+    console.warn("[sheets] GOOGLE_SPREADSHEET_ID is not set — returning empty sheet values.");
+    return [];
+  }
+
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn("[sheets] Google service account credentials are incomplete — returning empty sheet values.");
+    return [];
+  }
+
+  const sheets = getSheetsClient();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!${range}`,
+  });
+
+  return (response.data.values ?? []) as (string | null | undefined)[][];
+}
+
+export async function appendSheetValues(
+  sheetName: string,
+  values: string[][],
+): Promise<void> {
+  if (!SPREADSHEET_ID) {
+    console.warn("[sheets] GOOGLE_SPREADSHEET_ID is not set — skipping sheet append.");
+    return;
+  }
+
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn("[sheets] Google service account credentials are incomplete — skipping sheet append.");
+    return;
+  }
+
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!A:Z`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values },
+  });
+}
+
+  const serializedMeta = JSON.stringify({
+    firstDocumentationAt: stageTimestamps,
+  } satisfies TrackingMeta);
+
+  if (!cleanPlainNotes) {
+    return `${NOTES_TRACKING_META_PREFIX}${serializedMeta}`;
+  }
+
+  return `${cleanPlainNotes}\n${NOTES_TRACKING_META_PREFIX}${serializedMeta}`;
+}
 
 // ── Parse a raw sheet row into an Animal object ───────────────
 function parseRow(row: (string | null | undefined)[]): Animal | null {
@@ -142,8 +288,9 @@ function parseRow(row: (string | null | undefined)[]): Animal | null {
       ? `${rawWeightPost} kg`
       : undefined;
 
-  const rawStatus = row[COL.STATUS]?.trim() as AnimalStatus;
-  const currentStage = (STATUS_STAGE[rawStatus] ?? 1) as StageIndex;
+  const rawStatus = row[COL.STATUS]?.trim() ?? "";
+  const status = isAnimalStatus(rawStatus) ? rawStatus : "Belum Dimulai";
+  const currentStage = (STATUS_STAGE[status] ?? 0) as StageIndex;
 
   const rawShohibul = row[COL.SHOHIBUL]?.trim() ?? "";
   const shohibul = rawShohibul
@@ -153,11 +300,14 @@ function parseRow(row: (string | null | undefined)[]): Animal | null {
         .filter(Boolean)
     : [];
 
+  const notesCell = row[COL.NOTES]?.trim() ?? "";
+  const { plainNotes, stageTimestamps } = parseNotesCell(notesCell);
+
   return {
     id,
     name: row[COL.NAME]?.trim() ?? id,
     species: row[COL.SPECIES]?.trim() ?? "Hewan",
-    status: rawStatus ?? "Persiapan",
+    status,
     currentStage,
     weight,
     location: row[COL.LOCATION]?.trim() ?? "",
@@ -166,7 +316,8 @@ function parseRow(row: (string | null | undefined)[]): Animal | null {
     driveUrl: row[COL.DRIVE_URL]?.trim() || undefined,
     weightPost,
     completedTime: row[COL.COMPLETED_TIME]?.trim() || undefined,
-    notes: row[COL.NOTES]?.trim() || undefined,
+    notes: plainNotes,
+    stageTimestamps,
   };
 }
 
@@ -317,6 +468,57 @@ export async function updateAnimalImageUrl(id: string, imageUrl: string): Promis
     console.error("[sheets] Failed to update animal image URL:", error);
     throw error;
   }
+}
+
+export async function upsertStageFirstDocumentationTime(
+  id: string,
+  stage: StageTrackableStatus,
+  timestampIso: string,
+): Promise<void> {
+  if (!SPREADSHEET_ID) {
+    console.warn(
+      "[sheets] GOOGLE_SPREADSHEET_ID is not set — skipping stage timestamp update.",
+    );
+    return;
+  }
+
+  if (!hasGoogleSheetsCredentials()) {
+    console.warn(
+      "[sheets] Google service account credentials are incomplete — skipping stage timestamp update.",
+    );
+    return;
+  }
+
+  const sheets = getSheetsClient();
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A2:L`,
+  });
+
+  const rows = response.data.values ?? [];
+  const rowIndex = rows.findIndex(
+    (row) => row[COL.ID]?.toString().toUpperCase() === id.toUpperCase(),
+  );
+
+  if (rowIndex === -1) {
+    throw new Error(`Animal with ID ${id} not found`);
+  }
+
+  const targetRow = rows[rowIndex] ?? [];
+  const existingNotesCell = String(targetRow[COL.NOTES] ?? "").trim();
+  const { plainNotes, stageTimestamps } = parseNotesCell(existingNotesCell);
+
+  if (stageTimestamps[stage]) {
+    return;
+  }
+
+  const updatedStageTimestamps: Partial<Record<StageTrackableStatus, string>> = {
+    ...stageTimestamps,
+    [stage]: timestampIso,
+  };
+
+  const updatedNotesCell = buildNotesCell(plainNotes, updatedStageTimestamps);
+  await updateAnimalCell(id, COL.NOTES + 1, updatedNotesCell);
 }
 
 // ── Read key/value pairs from Env sheet (A = key, B = value) ─────────────────

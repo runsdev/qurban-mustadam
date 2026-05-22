@@ -5,7 +5,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { fetchAnimalById } from "@/lib/sheets";
-import type { Animal } from "@/lib/types";
+import type { Animal, StageTrackableStatus } from "@/lib/types";
 import NotificationSubscribeButton from "./NotificationSubscribeButton";
 
 // ── Fallback mock data (used when Google Sheets env vars are not set) ─
@@ -81,22 +81,18 @@ const mockData: Record<string, Animal> = {
 
 // ── Journey stages definition ─────────────────────────────────
 const stages = [
-  { key: 1, label: "Hewan Tiba", icon: "pets", time: "08:00 WIB" },
-  { key: 2, label: "Penyembelihan", icon: "content_cut", time: "09:15 WIB" },
-  {
-    key: 3,
-    label: "Pengulitan",
-    icon: "conveyor_belt",
-    time: "Sedang Berlangsung",
-  },
-  { key: 4, label: "Pemisahan daging & tulang", icon: "recycling", time: "" },
-  { key: 5, label: "Pemotongan daging", icon: "content_cut", time: "" },
-  { key: 6, label: "Distribusi", icon: "local_shipping", time: "" },
-  { key: 7, label: "Selesai", icon: "verified", time: "" },
+  { key: 1, label: "Hewan Tiba", icon: "pets" },
+  { key: 2, label: "Penyembelihan", icon: "content_cut" },
+  { key: 3, label: "Pengulitan", icon: "conveyor_belt" },
+  { key: 4, label: "Pemisahan daging & tulang", icon: "recycling" },
+  { key: 5, label: "Pemotongan daging", icon: "content_cut" },
+  { key: 6, label: "Distribusi", icon: "local_shipping" },
+  { key: 7, label: "Selesai", icon: "verified" },
 ];
 
 // ── Status badge config ───────────────────────────────────────
 type KnownStatus =
+  | "Belum Dimulai"
   | "Hewan Tiba"
   | "Penyembelihan"
   | "Pengulitan"
@@ -105,6 +101,7 @@ type KnownStatus =
   | "Distribusi"
   | "Selesai";
 const statusConfig: Record<KnownStatus, { label: string; pulse: boolean }> = {
+  "Belum Dimulai": { label: "Status: Menunggu Dokumentasi", pulse: false },
   "Hewan Tiba": { label: "Status: Hewan Tiba", pulse: true },
   Penyembelihan: { label: "Status: Penyembelihan", pulse: true },
   Pengulitan: { label: "Status: Pengulitan", pulse: true },
@@ -113,6 +110,27 @@ const statusConfig: Record<KnownStatus, { label: string; pulse: boolean }> = {
   Distribusi: { label: "Status: Distribusi", pulse: true },
   Selesai: { label: "Status: Selesai", pulse: false },
 };
+
+function formatDocumentationTime(value: string | undefined) {
+  if (!value) return "";
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+    hour12: false,
+  }).format(parsedDate) + " WIB";
+}
+
+function getStageTimestamp(
+  animal: Animal,
+  stageLabel: StageTrackableStatus,
+) {
+  return formatDocumentationTime(animal.stageTimestamps?.[stageLabel]);
+}
 
 // ── Page component ────────────────────────────────────────────
 export default async function HewanDetailPage({
@@ -326,7 +344,9 @@ export default async function HewanDetailPage({
               Perjalanan Ibadah
             </h3>
             <span className="text-sm font-bold text-secondary">
-              Tahap {currentStage} dari {stages.length}
+              {currentStage === 0
+                ? "Belum ada tracking"
+                : `Tahap ${currentStage} dari ${stages.length}`}
             </span>
           </div>
 
@@ -337,9 +357,10 @@ export default async function HewanDetailPage({
 
               <div className="grid grid-cols-7 gap-2 sm:gap-3 relative">
                 {stages.map((stage) => {
-                  const isDone = stage.key < currentStage;
-                  const isCurrent = stage.key === currentStage;
-                  const isLocked = stage.key > currentStage;
+                  const isDone = currentStage > 0 && stage.key < currentStage;
+                  const isCurrent = currentStage > 0 && stage.key === currentStage;
+                  const isLocked = currentStage === 0 || stage.key > currentStage;
+                  const stageTime = getStageTimestamp(animal, stage.label);
 
                   return (
                     <div
@@ -353,7 +374,9 @@ export default async function HewanDetailPage({
                         .join(" ")}
                     >
                       {/* Stage icon circle */}
-                      {isCurrent ? (
+                      {currentStage === 0 ? (
+                        <div className="w-14 h-14 mb-4" />
+                      ) : isCurrent ? (
                         <div className="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg animate-pulse border-4 border-primary-fixed mb-4">
                           <span className="material-symbols-outlined text-xl">
                             {stage.icon}
@@ -393,9 +416,9 @@ export default async function HewanDetailPage({
                           {stage.label}
                         </h4>
 
-                        {stage.time && isCurrent && (
+                        {stageTime && isCurrent && (
                           <p className="text-[10px] font-bold text-primary mt-1">
-                            {stage.time}
+                            {stageTime}
                           </p>
                         )}
                       </div>
@@ -405,6 +428,11 @@ export default async function HewanDetailPage({
               </div>
             </div>
           </div>
+          {currentStage === 0 && (
+            <p className="text-xs text-on-surface-variant">
+              Tracking akan dimulai setelah panitia mengirim dokumentasi pertama.
+            </p>
+          )}
         </section>
 
         {/* ── Location Footer ── */}

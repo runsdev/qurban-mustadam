@@ -7,6 +7,7 @@
  * "Status" column of the Google Sheet exactly.
  */
 export type AnimalStatus =
+  | "Belum Dimulai"
   | "Hewan Tiba"
   | "Penyembelihan"
   | "Pengulitan"
@@ -18,7 +19,9 @@ export type AnimalStatus =
 /**
  * Journey stage index (1–7), derived automatically from Status.
  */
-export type StageIndex = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type StageIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type StageTrackableStatus = Exclude<AnimalStatus, "Belum Dimulai">;
 
 /**
  * One row from the "Hewan" sheet.
@@ -55,6 +58,8 @@ export interface Animal {
   completedTime?: string;
   /** Notes entered by operator — optional */
   notes?: string;
+  /** First documentation timestamp per status stage (ISO string) */
+  stageTimestamps?: Partial<Record<StageTrackableStatus, string>>;
 }
 
 /**
