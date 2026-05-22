@@ -31,7 +31,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${notoSerif.variable} ${plusJakartaSans.variable} h-full antialiased`}
+      className={`${notoSerif.variable} ${plusJakartaSans.variable} h-full antialiased overflow-x-hidden`}
     >
       <head>
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
@@ -45,7 +45,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap"
         />
       </head>
-      <body className="bg-surface text-on-surface font-body min-h-screen flex flex-col">
+      <body className="bg-surface text-on-surface font-body min-h-screen flex flex-col overflow-x-hidden">
         {children}
       </body>
     </html>

@@ -320,7 +320,7 @@ export default async function HewanDetailPage({
         </section>
 
         {/* ── Visual Journey / Timeline ── */}
-        <section className="space-y-8 w-full max-w-full">
+        <section className="space-y-6 w-full max-w-full">
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-outline-variant/20 pb-4 gap-2">
             <h3 className="text-3xl font-headline text-primary">
               Perjalanan Ibadah
@@ -330,80 +330,145 @@ export default async function HewanDetailPage({
             </span>
           </div>
 
-          <div className="w-full max-w-[100vw] overflow-x-auto pb-4 lg:mx-0">
+          <div className="space-y-3 sm:hidden">
+            {stages.map((stage) => {
+              const isDone = stage.key < currentStage;
+              const isCurrent = stage.key === currentStage;
+
+              return (
+                <div
+                  key={stage.key}
+                  className={[
+                    "flex items-center gap-3 rounded-2xl border p-4 bg-surface-container-low",
+                    isCurrent
+                      ? "border-primary/30 bg-primary/5"
+                      : isDone
+                        ? "border-secondary/20"
+                        : "border-outline-variant/20 opacity-70",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <div
+                    className={[
+                      "w-11 h-11 rounded-full flex items-center justify-center shrink-0",
+                      isCurrent
+                        ? "bg-primary text-white"
+                        : isDone
+                          ? "bg-secondary-container text-on-secondary-container"
+                          : "bg-surface-container-high text-outline",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <span
+                      className="material-symbols-outlined text-base"
+                      style={isDone ? { fontVariationSettings: '"FILL" 1' } : undefined}
+                    >
+                      {isDone ? "check_circle" : stage.icon}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={[
+                        "text-sm font-black uppercase tracking-tight leading-tight break-words",
+                        isCurrent
+                          ? "text-primary"
+                          : isDone
+                            ? "text-secondary"
+                            : "text-on-surface-variant",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      {stage.label}
+                    </div>
+                    {stage.time && (
+                      <p className="text-[11px] font-bold text-on-surface-variant mt-1">
+                        {stage.time}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden sm:block w-full max-w-[100vw] overflow-x-auto pb-4 lg:mx-0">
             <div className="relative min-w-[800px] md:min-w-[980px] pt-1 px-4 lg:px-0">
               {/* Horizontal track */}
               <div className="absolute top-8 left-10 right-10 h-1 bg-surface-container-highest rounded-full" />
 
               <div className="grid grid-cols-7 gap-2 relative">
-              {stages.map((stage) => {
-                const isDone = stage.key < currentStage;
-                const isCurrent = stage.key === currentStage;
-                const isLocked = stage.key > currentStage;
+                {stages.map((stage) => {
+                  const isDone = stage.key < currentStage;
+                  const isCurrent = stage.key === currentStage;
+                  const isLocked = stage.key > currentStage;
 
-                return (
-                  <div
-                    key={stage.key}
-                    className={[
-                      "relative flex flex-col items-center",
-                      isCurrent ? "z-10" : "",
-                      isLocked ? "opacity-40" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {/* Stage icon circle */}
-                    {isCurrent ? (
-                      <div className="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg animate-pulse border-4 border-primary-fixed mb-4">
-                        <span className="material-symbols-outlined text-xl">
-                          {stage.icon}
-                        </span>
-                      </div>
-                    ) : isDone ? (
-                      <div className="w-14 h-14 bg-secondary-container rounded-full flex items-center justify-center border-4 border-secondary-container mb-4 shadow-sm">
-                        <span
-                          className="material-symbols-outlined text-xl text-on-secondary-container"
-                          style={{ fontVariationSettings: '"FILL" 1' }}
-                        >
-                          check_circle
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="w-14 h-14 bg-surface-container-high rounded-full flex items-center justify-center border-4 border-transparent mb-4">
-                        <span className="material-symbols-outlined text-xl text-outline">
-                          {stage.icon}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Stage indicator */}
-                    <div className="text-center">
-                      <h4
-                        className={[
-                          "font-bold text-[10px] uppercase tracking-tighter leading-tight",
-                          isCurrent
-                            ? "text-primary"
-                            : isDone
-                              ? "text-secondary"
-                              : "text-on-surface-variant",
-                        ]
-                          .filter(Boolean)
-                          .join(" ")}
-                      >
-                        {stage.label}
-                      </h4>
-
-                      {stage.time && isCurrent && (
-                        <p className="text-[10px] font-bold text-primary mt-1">
-                          {stage.time}
-                        </p>
+                  return (
+                    <div
+                      key={stage.key}
+                      className={[
+                        "relative flex flex-col items-center",
+                        isCurrent ? "z-10" : "",
+                        isLocked ? "opacity-40" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      {/* Stage icon circle */}
+                      {isCurrent ? (
+                        <div className="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg animate-pulse border-4 border-primary-fixed mb-4">
+                          <span className="material-symbols-outlined text-xl">
+                            {stage.icon}
+                          </span>
+                        </div>
+                      ) : isDone ? (
+                        <div className="w-14 h-14 bg-secondary-container rounded-full flex items-center justify-center border-4 border-secondary-container mb-4 shadow-sm">
+                          <span
+                            className="material-symbols-outlined text-xl text-on-secondary-container"
+                            style={{ fontVariationSettings: '"FILL" 1' }}
+                          >
+                            check_circle
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 bg-surface-container-high rounded-full flex items-center justify-center border-4 border-transparent mb-4">
+                          <span className="material-symbols-outlined text-xl text-outline">
+                            {stage.icon}
+                          </span>
+                        </div>
                       )}
+
+                      {/* Stage indicator */}
+                      <div className="text-center">
+                        <h4
+                          className={[
+                            "font-bold text-[10px] uppercase tracking-tighter leading-tight",
+                            isCurrent
+                              ? "text-primary"
+                              : isDone
+                                ? "text-secondary"
+                                : "text-on-surface-variant",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                        >
+                          {stage.label}
+                        </h4>
+
+                        {stage.time && isCurrent && (
+                          <p className="text-[10px] font-bold text-primary mt-1">
+                            {stage.time}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
           </div>
         </section>
 
