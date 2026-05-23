@@ -4,7 +4,6 @@ import { appendSheetValues, getSheetValues } from "@/lib/sheets";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DATABASE_SHEET_NAME = process.env.GOOGLE_ACARA_DB_TAB ?? "Mahasiswa";
 const LOG_SHEET_NAME = process.env.GOOGLE_ACARA_MAKAN_TAB ?? "makan";
 
 type ParsedBarcode = {
@@ -122,16 +121,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const databaseRows = await getSheetValues(DATABASE_SHEET_NAME, "A2:A");
     const normalizedNim = parsedBarcode.nim.trim();
-    const nimExists = databaseRows.some((row) => String(row[0] ?? "").trim() === normalizedNim);
-
-    if (!nimExists) {
-      return NextResponse.json(
-        { error: `NIM ${normalizedNim} tidak ditemukan di database` },
-        { status: 404 },
-      );
-    }
 
     const now = new Date();
     const currentWeekKey = getWeekKey(now);

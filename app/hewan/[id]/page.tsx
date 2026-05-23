@@ -374,9 +374,7 @@ export default async function HewanDetailPage({
                         .join(" ")}
                     >
                       {/* Stage icon circle */}
-                      {currentStage === 0 ? (
-                        <div className="w-14 h-14 mb-4" />
-                      ) : isCurrent ? (
+                      {isCurrent ? (
                         <div className="w-14 h-14 bg-primary text-white rounded-full flex items-center justify-center shadow-lg animate-pulse border-4 border-primary-fixed mb-4">
                           <span className="material-symbols-outlined text-xl">
                             {stage.icon}
