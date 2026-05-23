@@ -111,6 +111,12 @@ const statusConfig: Record<KnownStatus, { label: string; pulse: boolean }> = {
   Selesai: { label: "Status: Selesai", pulse: false },
 };
 
+// Species -> Google Maps shortlinks (per-user input)
+const speciesMapLinks: Record<string, string> = {
+  sapi: "https://maps.app.goo.gl/M1vNFF3WhLfNrqrZ8?g_st=ac",
+  kambing: "https://maps.app.goo.gl/Xof8j5Lzdxxq3ATU7?g_st=ac",
+};
+
 function formatDocumentationTime(value: string | undefined) {
   if (!value) return "";
 
@@ -180,6 +186,7 @@ export default async function HewanDetailPage({
     pulse: false,
   };
   const currentStage = animal.currentStage;
+  const mapUrl = (animal as any).mapUrl ?? speciesMapLinks[(animal.species ?? "").toLowerCase()];
 
   return (
     <>
@@ -443,10 +450,22 @@ export default async function HewanDetailPage({
             internasional dan protokol syariat ketat.
           </p>
           <div className="flex items-center justify-center gap-6 flex-wrap">
-            <div className="inline-flex items-center gap-2 text-primary font-bold cursor-pointer hover:opacity-70 transition-opacity">
-              <span className="material-symbols-outlined">location_on</span>
-              Lihat di Peta
-            </div>
+            {mapUrl ? (
+              <a
+                href={mapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-primary font-bold hover:opacity-70 transition-opacity"
+              >
+                <span className="material-symbols-outlined">location_on</span>
+                Lihat di Peta
+              </a>
+            ) : (
+              <div className="inline-flex items-center gap-2 text-primary font-bold opacity-60">
+                <span className="material-symbols-outlined">location_on</span>
+                Lihat di Peta
+              </div>
+            )}
             {animal.driveUrl && (
               <a
                 href={animal.driveUrl}
