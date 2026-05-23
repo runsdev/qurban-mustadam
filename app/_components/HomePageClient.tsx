@@ -884,33 +884,45 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
       </div>
 
       {/* ── Bottom Navigation Bar (Mobile Only) ── */}
-      <footer className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-6 lg:hidden glass-nav bg-[#fbf9f5]/80">
-        <button className="flex flex-col items-center justify-center bg-primary-container text-on-primary rounded-2xl p-3 mb-2 scale-110 shadow-lg">
-          <span
-            className="material-symbols-outlined"
-            style={{ fontVariationSettings: '"FILL" 1' }}
-          >
-            sensors
-          </span>
-          <span className="text-[10px] uppercase tracking-widest font-bold mt-1">
-            Laporan
-          </span>
-        </button>
-        {[
-          { icon: "stars", label: "Kurban Saya" },
-          { icon: "search", label: "Cari" },
-          { icon: "diversity_1", label: "Dampak" },
-        ].map(({ icon, label }) => (
+      <footer className="fixed bottom-0 left-0 w-full z-50 lg:hidden px-6 pb-5 pt-2 pointer-events-none">
+        <nav className="pointer-events-auto mx-auto max-w-sm glass-nav bg-[#fbf9f5]/85 rounded-2xl shadow-[0_-4px_24px_rgba(55,45,23,0.10)] border border-primary/5 p-1.5 flex gap-1.5">
           <button
-            key={label}
-            className="flex flex-col items-center justify-center text-primary-container/50 p-2 hover:opacity-80 active:scale-90 transition-all"
+            onClick={() => setActiveView("laporan")}
+            className={`flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95 ${
+              activeView === "laporan"
+                ? "bg-primary-container text-on-primary shadow-md"
+                : "text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low"
+            }`}
           >
-            <span className="material-symbols-outlined">{icon}</span>
-            <span className="text-[10px] uppercase tracking-widest font-bold mt-1">
-              {label}
+            <span
+              className="material-symbols-outlined text-xl"
+              style={activeView === "laporan" ? { fontVariationSettings: '"FILL" 1' } : undefined}
+            >
+              sensors
+            </span>
+            <span className="text-xs uppercase tracking-widest font-black">
+              Laporan
             </span>
           </button>
-        ))}
+          <button
+            onClick={() => setActiveView("tentang")}
+            className={`flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95 ${
+              activeView === "tentang"
+                ? "bg-primary-container text-on-primary shadow-md"
+                : "text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low"
+            }`}
+          >
+            <span
+              className="material-symbols-outlined text-xl"
+              style={activeView === "tentang" ? { fontVariationSettings: '"FILL" 1' } : undefined}
+            >
+              auto_stories
+            </span>
+            <span className="text-xs uppercase tracking-widest font-black">
+              Tentang
+            </span>
+          </button>
+        </nav>
       </footer>
 
       {/* ── Decorative Background Bleeds ── */}
