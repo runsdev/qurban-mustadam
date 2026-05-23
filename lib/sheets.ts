@@ -211,6 +211,17 @@ function buildNotesCell(
     return cleanPlainNotes ?? "";
   }
 
+  const serializedMeta = JSON.stringify({
+    firstDocumentationAt: stageTimestamps,
+  } satisfies TrackingMeta);
+
+  if (!cleanPlainNotes) {
+    return `${NOTES_TRACKING_META_PREFIX}${serializedMeta}`;
+  }
+
+  return `${cleanPlainNotes}\n${NOTES_TRACKING_META_PREFIX}${serializedMeta}`;
+}
+
 export async function getSheetValues(
   sheetName: string,
   range: string,
@@ -255,17 +266,6 @@ export async function appendSheetValues(
     valueInputOption: "USER_ENTERED",
     requestBody: { values },
   });
-}
-
-  const serializedMeta = JSON.stringify({
-    firstDocumentationAt: stageTimestamps,
-  } satisfies TrackingMeta);
-
-  if (!cleanPlainNotes) {
-    return `${NOTES_TRACKING_META_PREFIX}${serializedMeta}`;
-  }
-
-  return `${cleanPlainNotes}\n${NOTES_TRACKING_META_PREFIX}${serializedMeta}`;
 }
 
 // ── Parse a raw sheet row into an Animal object ───────────────

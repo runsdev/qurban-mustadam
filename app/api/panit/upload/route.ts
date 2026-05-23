@@ -8,7 +8,7 @@ import {
   updateAnimalStatus,
 } from "@/lib/sheets";
 import { sendStatusNotification } from "@/lib/notifications";
-import type { AnimalStatus } from "@/lib/types";
+import type { AnimalStatus, StageTrackableStatus } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
       await updateAnimalImageUrl(animalId, imageUrl);
     }
 
-    const selectedStatus = processStage;
+    const selectedStatus = processStage as StageTrackableStatus;
     const selectedIndex = getStatusIndex(selectedStatus);
     const currentIndex = getStatusIndex(animal.status);
     const targetStatus = selectedStatus;

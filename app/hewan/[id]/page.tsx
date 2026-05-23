@@ -80,7 +80,7 @@ const mockData: Record<string, Animal> = {
 };
 
 // ── Journey stages definition ─────────────────────────────────
-const stages = [
+const stages: Array<{ key: number; label: StageTrackableStatus; icon: string }> = [
   { key: 1, label: "Hewan Tiba", icon: "pets" },
   { key: 2, label: "Penyembelihan", icon: "content_cut" },
   { key: 3, label: "Pengulitan", icon: "conveyor_belt" },
