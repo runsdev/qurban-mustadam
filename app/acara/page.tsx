@@ -398,10 +398,6 @@ export default function AcaraPage() {
               <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Scan Barcode Masuk
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                QR code atau barcode dibaca langsung dari kamera, lalu
-                disimpan ke tab makan jika belum pernah dipakai pada pekan ini.
-              </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -427,12 +423,7 @@ export default function AcaraPage() {
             <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/90 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
               <div className="border-b border-slate-100 px-6 py-5">
                 <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-black text-slate-950">Kamera Scanner</h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Arahkan QR code atau barcode ke kamera. Scan akan berjalan otomatis.
-                    </p>
-                  </div>
+                  <h2 className="text-xl font-black text-slate-950">Kamera Scanner</h2>
                   <button
                     type="button"
                     onClick={() => void startBarcodeScanner()}
@@ -475,33 +466,6 @@ export default function AcaraPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[2rem] border border-white/80 bg-emerald-50 p-6 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-[0.28em] text-emerald-700">
-                  Barcode Format
-                </p>
-                <p className="mt-3 text-sm leading-7 text-emerald-900">
-                  <span className="font-semibold">angka random</span>#
-                  <span className="font-semibold">nim</span>#
-                  <span className="font-semibold">tanggal</span>#
-                  <span className="font-semibold">6 digit random</span>
-                </p>
-                <p className="mt-2 text-sm text-emerald-900/80">
-                  Contoh: 9#556416#2026-05-22#288245
-                </p>
-              </div>
-
-              <div className="rounded-[2rem] border border-white/80 bg-sky-50 p-6 shadow-sm">
-                <p className="text-xs font-black uppercase tracking-[0.28em] text-sky-700">
-                  Aturan Validasi
-                </p>
-                <ul className="mt-3 space-y-2 text-sm leading-6 text-sky-900">
-                  <li>1. Format barcode harus valid.</li>
-                  <li>2. Kode yang sama hanya boleh sekali per pekan.</li>
-                  <li>3. Pekan dihitung Senin 00.00 sampai Ahad 23.59 WIB.</li>
-                </ul>
-              </div>
-            </div>
           </section>
 
           <aside className="space-y-6 lg:col-span-5">
