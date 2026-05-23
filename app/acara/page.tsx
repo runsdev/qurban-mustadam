@@ -329,9 +329,6 @@ export default function AcaraPage() {
               <h1 className="text-3xl font-black tracking-tight text-slate-950">
                 Login Acara
               </h1>
-              <p className="text-sm text-slate-600">
-                Password sama seperti panit, dibaca dari tab Password di spreadsheet.
-              </p>
             </div>
 
             {notice && (
