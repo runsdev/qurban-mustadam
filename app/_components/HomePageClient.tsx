@@ -872,12 +872,8 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                 )}
               </section>
 
-              {/* ── Load More placeholder ── */}
-              <div className="mt-12 mb-24 lg:mb-0 flex justify-center">
-                <button className="px-12 py-4 bg-surface-container-low hover:bg-surface-container-high text-primary font-black uppercase tracking-widest text-xs rounded-full transition-all">
-                  Muat Lebih Banyak Catatan
-                </button>
-              </div>
+              {/* Bottom spacer for mobile nav */}
+              <div className="mt-12 mb-24 lg:mb-0" />
             </>
           )}
         </main>

@@ -209,11 +209,6 @@ export default async function HewanDetailPage({
             <span className="text-sm font-bold text-on-surface-variant font-mono hidden md:block">
               #{animal.id}
             </span>
-            <button className="p-2 rounded-full hover:bg-surface-container-high transition-all">
-              <span className="material-symbols-outlined text-primary-container">
-                share
-              </span>
-            </button>
             <Link
               href="/"
               className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 bg-primary-container/15 rounded-full text-xs font-black text-primary uppercase tracking-widest hover:bg-primary-container/25 transition-all"
@@ -482,41 +477,31 @@ export default async function HewanDetailPage({
       </main>
 
       {/* ── Bottom Navigation Bar (Mobile Only) ── */}
-      <footer className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-end px-6 pb-6 lg:hidden glass-nav bg-[#fbf9f5]/80">
-        <Link
-          href="/"
-          className="flex flex-col items-center justify-center text-primary-container/50 p-2 hover:opacity-80 active:scale-90 transition-all"
-        >
-          <span className="material-symbols-outlined">arrow_back</span>
-          <span className="text-[10px] uppercase tracking-widest font-bold mt-1">
-            Kembali
-          </span>
-        </Link>
-        <button className="flex flex-col items-center justify-center bg-primary-container text-on-primary rounded-2xl p-3 mb-2 scale-110 shadow-lg">
-          <span
-            className="material-symbols-outlined"
-            style={{ fontVariationSettings: '"FILL" 1' }}
+      <footer className="fixed bottom-0 left-0 w-full z-50 lg:hidden px-6 pb-5 pt-2 pointer-events-none">
+        <nav className="pointer-events-auto mx-auto max-w-sm glass-nav bg-[#fbf9f5]/85 rounded-2xl shadow-[0_-4px_24px_rgba(55,45,23,0.10)] border border-primary/5 p-1.5 flex gap-1.5">
+          <Link
+            href="/"
+            className="flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95 text-on-surface-variant/60 hover:text-primary hover:bg-surface-container-low"
           >
-            pets
-          </span>
-          <span className="text-[10px] uppercase tracking-widest font-bold mt-1">
-            Detail
-          </span>
-        </button>
-        {[
-          { icon: "share", label: "Bagikan" },
-          { icon: "download", label: "Unduh" },
-        ].map(({ icon, label }) => (
+            <span className="material-symbols-outlined text-xl">arrow_back</span>
+            <span className="text-xs uppercase tracking-widest font-black">
+              Kembali
+            </span>
+          </Link>
           <button
-            key={label}
-            className="flex flex-col items-center justify-center text-primary-container/50 p-2 hover:opacity-80 active:scale-90 transition-all"
+            className="flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 active:scale-95 bg-primary-container text-on-primary shadow-md"
           >
-            <span className="material-symbols-outlined">{icon}</span>
-            <span className="text-[10px] uppercase tracking-widest font-bold mt-1">
-              {label}
+            <span
+              className="material-symbols-outlined text-xl"
+              style={{ fontVariationSettings: '"FILL" 1' }}
+            >
+              pets
+            </span>
+            <span className="text-xs uppercase tracking-widest font-black">
+              Detail
             </span>
           </button>
-        ))}
+        </nav>
       </footer>
 
       {/* ── Decorative Background Bleeds ── */}
