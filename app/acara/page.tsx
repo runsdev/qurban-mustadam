@@ -65,19 +65,179 @@ function normalizeBarcodeInput(value: string) {
   return value.trim();
 }
 
+const supportedBarcodeFormats = [
+  "qr_code",
+  "code_128",
+  "code_39",
+  "ean_13",
+  "ean_8",
+  "upc_a",
+  "upc_e",
+  "itf",
+  "pdf417",
+] as const;
+
+type BarcodeDetectorInstance = {
+  detect: (source: CanvasImageSource) => Promise<Array<{ rawValue: string }>>;
+};
+
 export default function AcaraPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
-  const [barcode, setBarcode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [scannerSupported, setScannerSupported] = useState(true);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [lastScan, setLastScan] = useState<ScanResponse | null>(null);
   const [scanHistory, setScanHistory] = useState<ScanResponse[]>([]);
 
-  const barcodeInputRef = useRef<HTMLInputElement | null>(null);
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const detectorRef = useRef<BarcodeDetectorInstance | null>(null);
+  const scanFrameRef = useRef<number | null>(null);
+  const processingRef = useRef(false);
+  const lastDetectedValueRef = useRef<string>("");
 
   const weekLabel = useMemo(() => formatWeekLabel(), []);
+
+  const stopCamera = () => {
+    if (scanFrameRef.current !== null) {
+      cancelAnimationFrame(scanFrameRef.current);
+      scanFrameRef.current = null;
+    }
+
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+
+    const video = videoRef.current;
+    if (video) {
+      video.srcObject = null;
+    }
+
+    setCameraReady(false);
+  };
+
+  const submitDetectedBarcode = async (rawValue: string) => {
+    const normalizedBarcode = normalizeBarcodeInput(rawValue);
+
+    if (!normalizedBarcode || processingRef.current) {
+      return;
+    }
+
+    processingRef.current = true;
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/acara/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode: normalizedBarcode }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || "Scan gagal");
+      }
+
+      const result = data as ScanResponse;
+      setLastScan(result);
+      setScanHistory((currentHistory) => [result, ...currentHistory].slice(0, 5));
+      playSuccessSound();
+      showNotice("success", `${result.nim} berhasil dicatat.`);
+      lastDetectedValueRef.current = normalizedBarcode;
+
+      window.setTimeout(() => {
+        lastDetectedValueRef.current = "";
+      }, 2200);
+    } catch (error) {
+      showNotice(
+        "error",
+        error instanceof Error ? error.message : "Scan gagal",
+      );
+    } finally {
+      setIsSubmitting(false);
+      processingRef.current = false;
+    }
+  };
+
+  const startBarcodeScanner = async () => {
+    if (typeof window === "undefined") return;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setScannerSupported(false);
+      setCameraError("Browser ini tidak mendukung akses kamera.");
+      return;
+    }
+
+    const BarcodeDetectorCtor = (window as Window & {
+      BarcodeDetector?: new (options: { formats: readonly string[] }) => BarcodeDetectorInstance;
+    }).BarcodeDetector;
+
+    if (!BarcodeDetectorCtor) {
+      setScannerSupported(false);
+      setCameraError("Browser ini belum mendukung pemindai QR/barcode bawaan.");
+      return;
+    }
+
+    try {
+      setCameraError(null);
+      stopCamera();
+
+      const detector = new BarcodeDetectorCtor({ formats: supportedBarcodeFormats });
+      detectorRef.current = detector;
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+
+      streamRef.current = stream;
+      const video = videoRef.current;
+      if (!video) {
+        throw new Error("Elemen kamera tidak ditemukan.");
+      }
+
+      video.srcObject = stream;
+      await video.play();
+      setCameraReady(true);
+
+      const scanLoop = async () => {
+        if (!detectorRef.current || !videoRef.current || !streamRef.current) {
+          return;
+        }
+
+        if (!processingRef.current && videoRef.current.readyState >= 2) {
+          try {
+            const barcodes = await detectorRef.current.detect(videoRef.current);
+            const detectedValue = barcodes[0]?.rawValue?.trim() ?? "";
+
+            if (detectedValue && detectedValue !== lastDetectedValueRef.current) {
+              await submitDetectedBarcode(detectedValue);
+            }
+          } catch {
+            // Ignore transient detection errors while camera is initializing.
+          }
+        }
+
+        scanFrameRef.current = requestAnimationFrame(scanLoop);
+      };
+
+      scanFrameRef.current = requestAnimationFrame(scanLoop);
+    } catch (error) {
+      setCameraError(
+        error instanceof Error ? error.message : "Gagal menyalakan kamera.",
+      );
+      setCameraReady(false);
+      stopCamera();
+    }
+  };
 
   useEffect(() => {
     const storedAuth = window.sessionStorage.getItem("acara-auth") === "1";
@@ -86,10 +246,13 @@ export default function AcaraPage() {
 
   useEffect(() => {
     if (authenticated) {
-      barcodeInputRef.current?.focus();
+      void startBarcodeScanner();
     } else {
       passwordInputRef.current?.focus();
     }
+    return () => {
+      stopCamera();
+    };
   }, [authenticated]);
 
   useEffect(() => {
@@ -140,58 +303,15 @@ export default function AcaraPage() {
     }
   };
 
-  const handleScan = async () => {
-    const normalizedBarcode = normalizeBarcodeInput(barcode);
-
-    if (!normalizedBarcode) {
-      showNotice("error", "Barcode belum diisi.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch("/api/acara/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode: normalizedBarcode }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.error || "Scan gagal");
-      }
-
-      const result = data as ScanResponse;
-      setLastScan(result);
-      setScanHistory((currentHistory) => [result, ...currentHistory].slice(0, 5));
-      setBarcode("");
-      playSuccessSound();
-      showNotice("success", `${result.nim} berhasil dicatat.`);
-
-      window.setTimeout(() => {
-        barcodeInputRef.current?.focus();
-      }, 0);
-    } catch (error) {
-      showNotice(
-        "error",
-        error instanceof Error ? error.message : "Scan gagal",
-      );
-      barcodeInputRef.current?.focus();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleLogout = () => {
     window.sessionStorage.removeItem("acara-auth");
     setAuthenticated(false);
-    setBarcode("");
     setPassword("");
     setLastScan(null);
     setScanHistory([]);
+    setCameraError(null);
     showNotice("success", "Logout berhasil.");
+    stopCamera();
   };
 
   if (!authenticated) {
@@ -279,7 +399,7 @@ export default function AcaraPage() {
                 Scan Barcode Masuk
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-slate-600">
-                Barcode dibaca dari scanner, diverifikasi ke database NIM, lalu
+                QR code atau barcode dibaca langsung dari kamera, lalu
                 disimpan ke tab makan jika belum pernah dipakai pada pekan ini.
               </p>
             </div>
@@ -304,45 +424,54 @@ export default function AcaraPage() {
 
         <div className="grid gap-6 lg:grid-cols-12">
           <section className="space-y-4 lg:col-span-7">
-            <div className="rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Barcode Scanner Input
-              </label>
-              <input
-                ref={barcodeInputRef}
-                type="text"
-                value={barcode}
-                onChange={(event) => setBarcode(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void handleScan();
-                  }
-                }}
-                placeholder="Contoh: 9#556416#2026-05-22#288245"
-                className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-lg font-semibold tracking-wide text-slate-950 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-200"
-              />
+            <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white/90 shadow-[0_24px_80px_rgba(15,23,42,0.10)]">
+              <div className="border-b border-slate-100 px-6 py-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">Kamera Scanner</h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Arahkan QR code atau barcode ke kamera. Scan akan berjalan otomatis.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void startBarcodeScanner()}
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+                  >
+                    Restart Kamera
+                  </button>
+                </div>
+              </div>
 
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => void handleScan()}
-                  disabled={isSubmitting}
-                  className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black uppercase tracking-[0.2em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSubmitting ? "Memproses..." : "Proses Scan"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBarcode("");
-                    setNotice(null);
-                    barcodeInputRef.current?.focus();
-                  }}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
-                >
-                  Bersihkan
-                </button>
+              <div className="bg-slate-950 p-4">
+                <div className="relative aspect-video overflow-hidden rounded-[1.5rem] border border-white/10 bg-black">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="h-56 w-56 rounded-[2rem] border-2 border-dashed border-emerald-400/85 shadow-[0_0_0_9999px_rgba(0,0,0,0.18)]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 px-6 py-5">
+                {cameraError ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    {cameraError}
+                  </div>
+                ) : (
+                  <div className={`rounded-2xl px-4 py-3 text-sm ${cameraReady ? "border border-emerald-200 bg-emerald-50 text-emerald-800" : "border border-amber-200 bg-amber-50 text-amber-800"}`}>
+                    {scannerSupported
+                      ? cameraReady
+                        ? "Kamera aktif. Tunggu barcode/QR terbaca otomatis."
+                        : "Menyalakan kamera..."
+                      : "Browser tidak mendukung pemindai kamera bawaan."}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -367,8 +496,8 @@ export default function AcaraPage() {
                   Aturan Validasi
                 </p>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-sky-900">
-                  <li>1. NIM harus ada di database.</li>
-                  <li>2. NIM yang sama hanya boleh sekali per pekan.</li>
+                  <li>1. Format barcode harus valid.</li>
+                  <li>2. Kode yang sama hanya boleh sekali per pekan.</li>
                   <li>3. Pekan dihitung Senin 00.00 sampai Ahad 23.59 WIB.</li>
                 </ul>
               </div>
