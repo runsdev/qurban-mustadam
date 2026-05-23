@@ -7,7 +7,6 @@
 import { NextResponse } from "next/server";
 import { fetchAllAnimals, computeStats } from "@/lib/sheets";
 
-export const dynamic = "force-dynamic"; // always fetch fresh data
 export const revalidate = 60; // ISR: revalidate every 60 s
 
 export async function GET() {
