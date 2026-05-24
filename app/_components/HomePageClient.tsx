@@ -581,10 +581,10 @@ export default function HomePageClient({ animals: initialAnimals, stats: initial
                   </span>
                 </div>
                 <h1 className="font-headline text-5xl md:text-6xl font-black text-primary leading-tight mb-4">
-                  Tagline <span className="italic text-secondary">Qurban</span>
+                  Satu <span className="italic text-secondary">Qurban</span>, Sejuta Senyuman Penerima.
                 </h1>
                 <p className="text-lg text-on-surface-variant max-w-lg leading-relaxed">
-                  deskripsi .... ..
+                  Setiap hewan qurban yang Anda titipkan adalah sumber kebahagiaan bagi mereka yang jarang menikmati daging berkualitas sepanjang tahun. Melalui pemetaan wilayah distribusi yang cermat oleh Masjid Al-Mustadam, mari luaskan senyuman dan kehangatan hari raya bagi saudara-saudara kita yang membutuhkan.
                 </p>
               </div>
               <div className="flex items-center gap-4 bg-surface-container-low p-2 rounded-2xl">
