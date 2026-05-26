@@ -10,7 +10,6 @@ const stageOptions = [
   "Pemisahan daging & tulang",
   "Pemotongan daging",
   "Distribusi",
-  "Selesai",
 ] as const;
 
 type StageOption = (typeof stageOptions)[number];
@@ -142,6 +141,41 @@ export default function PanitPage() {
     streamRef.current = null;
     setCameraStream(null);
     setCaptureMode(null);
+  };
+
+  const handleVideoClick = async (e: React.MouseEvent<HTMLVideoElement>) => {
+    if (!streamRef.current) return;
+    const track = streamRef.current.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const capabilities = track.getCapabilities() as any;
+      if (capabilities.focusMode?.includes("single-shot") || capabilities.focusMode?.includes("continuous")) {
+        const video = videoRef.current;
+        if (!video) return;
+        
+        const rect = video.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        
+        await track.applyConstraints({
+          advanced: [{ focusMode: "single-shot", pointsOfInterest: [{ x, y }] }]
+        } as any);
+
+        const circle = document.createElement("div");
+        circle.className = "absolute border-2 border-yellow-400 rounded-full w-16 h-16 pointer-events-none animate-[ping_0.5s_cubic-bezier(0,0,0.2,1)_1]";
+        circle.style.left = `${e.clientX - rect.left - 32}px`;
+        circle.style.top = `${e.clientY - rect.top - 32}px`;
+        
+        const container = video.parentElement;
+        if (container) {
+          container.style.position = "relative";
+          container.appendChild(circle);
+          setTimeout(() => circle.remove(), 500);
+        }
+      }
+    } catch (err) {
+      console.warn("Manual focus not supported or failed", err);
+    }
   };
 
   const handleLogin = async (password: string) => {
@@ -619,13 +653,14 @@ export default function PanitPage() {
 
                 {cameraStream ? (
                   <div className="space-y-4">
-                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="aspect-video w-full object-cover"
+                      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          onClick={handleVideoClick}
+                          className="aspect-video w-full object-cover cursor-crosshair"
                       />
                     </div>
 

@@ -75,25 +75,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const uploadedMedia: Array<{ url: string; type: "image" | "video" }> = [];
+    const uploadedMedia: Array<{ fileUrl: string; folderUrl: string; fileId: string; type: "image" | "video" }> = [];
 
     for (const file of mediaFiles) {
       const mediaType = file.type.startsWith("video") ? "video" : "image";
-      const mediaUrl = await uploadMediaToDrive({
+      const { fileUrl, folderUrl, fileId } = await uploadMediaToDrive({
         animalId,
         processStage,
         file,
         mimeType: file.type || (mediaType === "video" ? "video/webm" : "image/jpeg"),
       });
 
-      uploadedMedia.push({ url: mediaUrl, type: mediaType });
+      uploadedMedia.push({ fileUrl, folderUrl, fileId, type: mediaType });
     }
 
-    const driveUrls = uploadedMedia.map((item) => item.url).filter(Boolean);
-    const imageUrl = uploadedMedia.find((item) => item.type === "image")?.url ?? driveUrls[0] ?? "";
+    const driveFolderUrl = uploadedMedia.find((item) => item.folderUrl)?.folderUrl ?? "";
+    const imageItem = uploadedMedia.find((item) => item.type === "image") ?? uploadedMedia[0];
+    const imageUrl = imageItem?.fileId ? `https://drive.google.com/uc?id=${imageItem.fileId}&export=view` : "";
 
-    if (driveUrls.length > 0) {
-      await updateAnimalDriveUrl(animalId, driveUrls.join("\n"));
+    // update drive url hanya jika belum ada
+    if (!animal.driveUrl && driveFolderUrl) {
+      await updateAnimalDriveUrl(animalId, driveFolderUrl);
     }
 
     if (imageUrl) {
@@ -103,8 +105,8 @@ export async function POST(request: Request) {
     const selectedStatus = processStage as StageTrackableStatus;
     const selectedIndex = getStatusIndex(selectedStatus);
     const currentIndex = getStatusIndex(animal.status);
-    const targetStatus = selectedStatus;
-    const shouldIgnoreStatusUpdate = currentIndex > selectedIndex;
+    const targetStatus = selectedStatus === "Distribusi" ? "Selesai" : selectedStatus;
+    const shouldIgnoreStatusUpdate = currentIndex > getStatusIndex(targetStatus);
     const firstDocumentationTimestamp = new Date().toISOString();
 
     await upsertStageFirstDocumentationTime(
@@ -112,6 +114,14 @@ export async function POST(request: Request) {
       selectedStatus,
       firstDocumentationTimestamp,
     );
+
+    if (selectedStatus === "Distribusi") {
+      await upsertStageFirstDocumentationTime(
+        animalId,
+        "Selesai",
+        firstDocumentationTimestamp,
+      );
+    }
 
     let notificationResult = {
       success: true,
@@ -142,7 +152,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      mediaUrls: driveUrls,
+      mediaUrls: uploadedMedia.map((i) => i.fileUrl),
       message: `${uploadedMedia.length} media berhasil diupload ke Google Drive.`,
       statusChanged: !shouldIgnoreStatusUpdate && animal.status !== targetStatus,
       notification: notificationResult,

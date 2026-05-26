@@ -29,7 +29,7 @@ export async function uploadMediaToDrive({
   file: File;
   mimeType: string;
   parentFolderId?: string | null;
-}): Promise<string> {
+}: Promise<{ fileUrl: string; folderUrl: string; fileId: string }> {
   // Check for required environment variables
   try {
     const credentials = await resolveDriveCredentials();
@@ -58,7 +58,7 @@ export async function uploadMediaToDrive({
     const parentForAnimal = parentFolderId ?? rootParent ?? "root";
     const sharedDriveId = isSharedDriveId(parentForAnimal) ? parentForAnimal : null;
 
-    const documentationRootFolderId = await getOrCreateFolder(
+    const documentationRootFolderInfo = await getOrCreateFolder(
       drive,
       DOCUMENTATION_ROOT_FOLDER_NAME,
       parentForAnimal as string,
@@ -66,18 +66,18 @@ export async function uploadMediaToDrive({
     );
 
     // Find or create the animal folder
-    const animalFolderId = await getOrCreateFolder(
+    const animalFolderInfo = await getOrCreateFolder(
       drive,
       animalId,
-      documentationRootFolderId,
+      documentationRootFolderInfo.id,
       sharedDriveId,
     );
 
     // Find or create the process stage subfolder
-    const processFolderId = await getOrCreateFolder(
+    const processFolderInfo = await getOrCreateFolder(
       drive,
       processStage,
-      animalFolderId,
+      animalFolderInfo.id,
       sharedDriveId,
     );
 
@@ -89,7 +89,7 @@ export async function uploadMediaToDrive({
     // Upload the file
     const fileMetadata = {
       name: uploadPayload.name,
-      parents: [processFolderId],
+      parents: [processFolderInfo.id],
     };
 
     // Convert Blob to a Node.js stream for googleapis upload
@@ -107,7 +107,11 @@ export async function uploadMediaToDrive({
       fields: "id, webViewLink, webContentLink",
     });
 
-    return response.data.webViewLink || "";
+    return {
+      fileUrl: response.data.webViewLink || "",
+      folderUrl: animalFolderInfo.webViewLink || "",
+      fileId: response.data.id || "",
+    };
   } catch (error) {
     console.error("[drive] Failed to upload media:", error);
     throw error;
@@ -412,12 +416,12 @@ async function getOrCreateFolder(
   folderName: string,
   parentFolderId: string,
   sharedDriveId?: string | null,
-): Promise<string> {
+): Promise<{ id: string; webViewLink: string | null }> {
   try {
     // Search for existing folder
     const listOptions: Record<string, unknown> = {
       q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed=false`,
-      fields: "files(id, name)",
+      fields: "files(id, name, webViewLink)",
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
     };
@@ -432,8 +436,9 @@ async function getOrCreateFolder(
     const folders = response.data.files ?? [];
     if (folders.length > 0 && folders[0]?.id) {
       const existingFolderId = folders[0].id;
+      const webViewLink = folders[0].webViewLink ?? null;
       await ensurePublicFolderLink(drive, existingFolderId, sharedDriveId);
-      return existingFolderId;
+      return { id: existingFolderId, webViewLink };
     }
 
     // Create new folder if not found
@@ -445,13 +450,14 @@ async function getOrCreateFolder(
 
     const folderResponse = await drive.files.create({
       requestBody: folderMetadata,
-      fields: "id",
+      fields: "id, webViewLink",
       supportsAllDrives: true,
     });
 
     const createdFolderId = folderResponse.data.id ?? parentFolderId;
+    const webViewLink = folderResponse.data.webViewLink ?? null;
     await ensurePublicFolderLink(drive, createdFolderId, sharedDriveId);
-    return createdFolderId;
+    return { id: createdFolderId, webViewLink };
   } catch (error) {
     console.error("[drive] Error in getOrCreateFolder:", error);
     throw error;

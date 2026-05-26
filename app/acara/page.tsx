@@ -303,6 +303,20 @@ export default function AcaraPage() {
     }
   };
 
+  const [showPorsiModal, setShowPorsiModal] = useState(false);
+  const [porsiInfo, setPorsiInfo] = useState<string | number>("Loading...");
+
+  const fetchPorsi = async () => {
+    try {
+      setPorsiInfo("Loading...");
+      const res = await fetch("/api/acara/porsi");
+      const data = await res.json();
+      setPorsiInfo(data.porsi);
+    } catch {
+      setPorsiInfo("Error");
+    }
+  };
+
   const handleLogout = () => {
     window.sessionStorage.removeItem("acara-auth");
     setAuthenticated(false);
@@ -398,6 +412,16 @@ export default function AcaraPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPorsiModal(true);
+                  fetchPorsi();
+                }}
+                className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 transition hover:border-amber-300 hover:text-amber-900"
+              >
+                Lihat Porsi
+              </button>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
                 <div className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
                   Pekan Aktif
@@ -523,6 +547,27 @@ export default function AcaraPage() {
           </aside>
         </div>
       </div>
+
+      {showPorsiModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#e0d080] p-4 text-center" style={{ fontFamily: "Poppins, sans-serif" }}>
+          <div className="absolute top-6 right-6">
+            <button
+              onClick={() => setShowPorsiModal(false)}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-black/10 transition hover:bg-black/20"
+            >
+              <span className="material-symbols-outlined text-black">close</span>
+            </button>
+          </div>
+          <div>
+            <h2 className="text-4xl font-bold text-[#4a3b1a] md:text-6xl">
+              Sisa Porsi
+            </h2>
+            <div className="mt-8 text-7xl font-black text-[#56421a] md:text-[10rem]">
+              {porsiInfo}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

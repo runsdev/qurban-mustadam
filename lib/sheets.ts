@@ -73,7 +73,7 @@ const SUB_COL = {
 const SHEET_NAME = process.env.GOOGLE_SHEET_TAB ?? "Hewan";
 const SUBSCRIPTION_SHEET_NAME = process.env.GOOGLE_SUBSCRIPTION_TAB ?? "Subscriptions";
 const PASSWORD_SHEET_NAME = process.env.GOOGLE_PASSWORD_TAB ?? "Password";
-const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? "";
+export const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID ?? "";
 const ENV_SHEET_NAME = process.env.GOOGLE_ENV_TAB ?? "Env";
 const SERVICE_ACCOUNT_EMAIL =
   process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ??
@@ -99,7 +99,7 @@ function hasGoogleSheetsCredentials() {
 }
 
 // ── Build the authenticated Sheets client ─────────────────────
-function getSheetsClient() {
+export function getSheetsClient() {
   const auth = new google.auth.GoogleAuth({
     credentials: {
       type: "service_account",

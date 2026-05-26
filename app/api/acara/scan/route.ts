@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { appendSheetValues, getSheetValues } from "@/lib/sheets";
+import { appendSheetValues, getSheetValues, getSheetsClient, SPREADSHEET_ID } from "@/lib/sheets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -144,6 +144,66 @@ export async function POST(request: Request) {
         { error: "Pekan ini QR code sudah digunakan" },
         { status: 409 },
       );
+    }
+
+    // Cek sisa porsi di header rows
+    const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z2");
+    let porsiRowIdx = -1;
+    let porsiColIdx = -1;
+    let currentPorsi = -1;
+
+    for (let r = 0; r < headerRows.length; r++) {
+      for (let c = 0; c < headerRows[r].length; c++) {
+        const val = String(headerRows[r][c] || "").trim().toLowerCase();
+        if (val.includes("sisa porsi")) {
+          const match = val.match(/\d+/);
+          if (match) {
+            currentPorsi = parseInt(match[0], 10);
+            porsiRowIdx = r;
+            porsiColIdx = c;
+          } else {
+            const below = String(headerRows[r+1]?.[c] || "").trim();
+            if (/^\d+$/.test(below)) {
+              currentPorsi = parseInt(below, 10);
+              porsiRowIdx = r + 1;
+              porsiColIdx = c;
+            } else {
+              const right = String(headerRows[r]?.[c + 1] || "").trim();
+              if (/^\d+$/.test(right)) {
+                currentPorsi = parseInt(right, 10);
+                porsiRowIdx = r;
+                porsiColIdx = c + 1;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (currentPorsi !== -1 && porsiRowIdx !== -1 && porsiColIdx !== -1) {
+      if (currentPorsi <= 0) {
+        return NextResponse.json(
+          { error: "Porsi makanan di spreadsheet sudah habis (0)" },
+          { status: 403 }
+        );
+      }
+      const newPorsi = currentPorsi - 1;
+      const originalText = String(headerRows[porsiRowIdx][porsiColIdx]);
+      let newValueToSave: string | number = newPorsi;
+      
+      if (originalText.toLowerCase().includes("sisa porsi")) {
+        newValueToSave = originalText.replace(/\d+/, String(newPorsi));
+      }
+      
+      const colLetter = String.fromCharCode(65 + porsiColIdx);
+      const cellToUpdate = `${LOG_SHEET_NAME}!${colLetter}${porsiRowIdx + 1}`;
+      const sheets = getSheetsClient();
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: cellToUpdate,
+        valueInputOption: "USER_ENTERED",
+        requestBody: { values: [[newValueToSave]] },
+      });
     }
 
     await appendSheetValues(LOG_SHEET_NAME, [[currentIso, normalizedNim]]);

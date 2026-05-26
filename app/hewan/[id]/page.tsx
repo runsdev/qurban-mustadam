@@ -469,7 +469,7 @@ export default async function HewanDetailPage({
                 className="inline-flex items-center gap-2 text-secondary font-bold hover:opacity-70 transition-opacity"
               >
                 <span className="material-symbols-outlined">folder_open</span>
-                Arsip Dokumentasi (Drive)
+                Folder {animal.name || `Hewan-${animal.id}`}
               </a>
             )}
           </div>
