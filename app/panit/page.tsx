@@ -625,6 +625,28 @@ export default function PanitPage() {
                     <div className="flex flex-wrap gap-3">
                       <button
                         type="button"
+                        onClick={() => {
+                          const input = document.createElement("input");
+                          input.type = "file";
+                          input.accept = "image/*,video/*";
+                          input.multiple = true;
+                          input.onchange = (e) => {
+                            const files = (e.target as HTMLInputElement).files;
+                            if (!files) return;
+                            Array.from(files).forEach((file) => {
+                              const type = file.type.startsWith("video/") ? "video" : "image";
+                              addCapturedMedia(file, type);
+                            });
+                          };
+                          input.click();
+                        }}
+                        disabled={uploading}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Upload media
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => openCamera("image")}
                         disabled={uploading || !browserSupportsCamera}
                         className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
@@ -712,41 +734,72 @@ export default function PanitPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => openCamera("image")}
-                      disabled={uploading || !browserSupportsCamera}
-                      className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">
-                        Photo
-                      </div>
-                      <div className="mt-2 text-2xl font-black text-slate-900">
-                        Buka Kamera Foto
-                      </div>
-                      <p className="mt-2 text-sm text-slate-600">
-                        Ambil satu frame foto dari kamera browser.
-                      </p>
-                    </button>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/*,video/*";
+                      input.multiple = true;
+                      input.onchange = (e) => {
+                        const files = (e.target as HTMLInputElement).files;
+                        if (!files) return;
+                        Array.from(files).forEach((file) => {
+                          const type = file.type.startsWith("video/") ? "video" : "image";
+                          addCapturedMedia(file, type);
+                        });
+                      };
+                      input.click();
+                    }}
+                    disabled={uploading}
+                    className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">
+                      Upload
+                    </div>
+                    <div className="mt-2 text-2xl font-black text-slate-900">
+                      Pilih dari Galeri
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Upload foto atau video dari memori HP.
+                    </p>
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={() => openCamera("video")}
-                      disabled={uploading || !browserSupportsCamera || !browserSupportsRecorder}
-                      className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">
-                        Video
-                      </div>
-                      <div className="mt-2 text-2xl font-black text-slate-900">
-                        Buka Kamera Video
-                      </div>
-                      <p className="mt-2 text-sm text-slate-600">
-                        Rekam video dengan audio jika browser mendukung.
-                      </p>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openCamera("image")}
+                    disabled={uploading || !browserSupportsCamera}
+                    className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">
+                      Photo
+                    </div>
+                    <div className="mt-2 text-2xl font-black text-slate-900">
+                      Buka Kamera Foto
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Ambil satu frame foto dari kamera browser.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openCamera("video")}
+                    disabled={uploading || !browserSupportsCamera || !browserSupportsRecorder}
+                    className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-left transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">
+                      Video
+                    </div>
+                    <div className="mt-2 text-2xl font-black text-slate-900">
+                      Buka Kamera Video
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Rekam video dengan audio jika browser mendukung.
+                    </p>
+                  </button>
+                </div>
                 )}
 
                 <div className="rounded-3xl bg-slate-50 p-5 text-sm text-slate-600">

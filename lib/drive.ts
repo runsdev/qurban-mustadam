@@ -10,7 +10,7 @@ import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
 import ffmpegStaticPath from "ffmpeg-static";
 
 // Google Drive API scopes
-const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
+const SCOPES = ["https://www.googleapis.com/auth/drive"];
 
 // Folder structure: /Dokumentasi Hewan Qurban/(id hewan)/(proses qurban)/
 // We'll create folders if they don't exist

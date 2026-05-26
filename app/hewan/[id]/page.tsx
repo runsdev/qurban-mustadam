@@ -258,13 +258,29 @@ export default async function HewanDetailPage({
 
             {/* Right: Animal photo */}
             <div className="lg:col-span-5 relative">
-              <div className="aspect-4/3 rounded-3xl overflow-hidden shadow-2xl bg-surface-container-low relative">
+              <div className="aspect-4/3 rounded-3xl overflow-hidden shadow-2xl bg-surface-container-low relative group">
                 <div className="absolute inset-0 arabesque-pattern pointer-events-none z-10" />
-                <img
-                  alt={animal.name}
-                  className="w-full h-full object-cover grayscale-20 hover:grayscale-0 transition-all duration-700"
-                  src={animal.imageUrl}
-                />
+                {animal.imageUrl ? (
+                  animal.imageUrl.includes("drive.google.com/uc") ? (
+                    <iframe
+                      src={`https://drive.google.com/file/d/${new URLSearchParams(animal.imageUrl.split("?")[1]).get("id")}/preview`}
+                      className="w-full h-full border-0 grayscale-20 group-hover:grayscale-0 transition-all duration-700"
+                      allow="autoplay"
+                      title="Dokumentasi Hewan"
+                    />
+                  ) : (
+                    <img
+                      alt={animal.name}
+                      className="w-full h-full object-cover grayscale-20 group-hover:grayscale-0 transition-all duration-700 relative z-20"
+                      src={animal.imageUrl}
+                    />
+                  )
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-on-surface-variant font-medium bg-surface-container-low relative z-20 gap-2">
+                    <span className="material-symbols-outlined text-4xl opacity-50">photo_library</span>
+                    <span>Belum ada dokumentasi</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
