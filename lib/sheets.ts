@@ -89,12 +89,18 @@ function normalizeEndpoint(value: string) {
 }
 
 function hasGoogleSheetsCredentials() {
+  const hasProjectId = process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID?.trim() && !process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID.includes('your_');
+  const hasKeyId = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID?.trim() && !process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID.includes('your_');
+  const hasClientEmail = SERVICE_ACCOUNT_EMAIL?.trim() && !SERVICE_ACCOUNT_EMAIL.includes('your_');
+  const hasClientId = process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID?.trim() && !process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID.includes('your_');
+  const hasPrivateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.trim() && !process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.includes('your_');
+  
   return Boolean(
-    process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID &&
-      process.env.GOOGLE_SERVICE_ACCOUNT_KEY_ID &&
-      SERVICE_ACCOUNT_EMAIL &&
-      process.env.GOOGLE_SERVICE_ACCOUNT_CLIENT_ID &&
-      process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
+    hasProjectId &&
+      hasKeyId &&
+      hasClientEmail &&
+      hasClientId &&
+      hasPrivateKey
   );
 }
 

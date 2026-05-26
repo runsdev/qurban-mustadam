@@ -29,7 +29,7 @@ export async function uploadMediaToDrive({
   file: File;
   mimeType: string;
   parentFolderId?: string | null;
-}: Promise<{ fileUrl: string; folderUrl: string; fileId: string }> {
+}): Promise<{ fileUrl: string; folderUrl: string; fileId: string }> {
   // Check for required environment variables
   try {
     const credentials = await resolveDriveCredentials();
@@ -436,7 +436,7 @@ async function getOrCreateFolder(
     const folders = response.data.files ?? [];
     if (folders.length > 0 && folders[0]?.id) {
       const existingFolderId = folders[0].id;
-      const webViewLink = folders[0].webViewLink ?? null;
+      const webViewLink = (folders[0] as any).webViewLink ?? null;
       await ensurePublicFolderLink(drive, existingFolderId, sharedDriveId);
       return { id: existingFolderId, webViewLink };
     }
@@ -455,7 +455,7 @@ async function getOrCreateFolder(
     });
 
     const createdFolderId = folderResponse.data.id ?? parentFolderId;
-    const webViewLink = folderResponse.data.webViewLink ?? null;
+    const webViewLink = (folderResponse.data as any).webViewLink ?? null;
     await ensurePublicFolderLink(drive, createdFolderId, sharedDriveId);
     return { id: createdFolderId, webViewLink };
   } catch (error) {
