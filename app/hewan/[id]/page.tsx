@@ -328,7 +328,7 @@ export default async function HewanDetailPage({
                 {animal.weight}
               </div>
               <p className="text-sm mt-2 opacity-80">
-                Bobot hidup saat penimbangan terakhir di karantina.
+                Bobot hidup sebelum di sembelih.
               </p>
             </div>
 
@@ -340,7 +340,7 @@ export default async function HewanDetailPage({
                 </span>
               </div>
               <span className="text-xs font-bold uppercase tracking-widest opacity-70">
-                Berat Setelah Sembelih
+                Perolehan daging bersih
               </span>
               {animal.weightPost ? (
                 <div className="text-4xl font-headline font-black mt-2">
@@ -359,7 +359,7 @@ export default async function HewanDetailPage({
         <section className="space-y-6 w-full max-w-full">
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-outline-variant/20 pb-4 gap-2">
             <h3 className="text-3xl font-headline text-primary">
-              Perjalanan Ibadah
+              Proses Qurban
             </h3>
             <span className="text-sm font-bold text-secondary">
               {currentStage === 0
