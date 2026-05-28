@@ -148,7 +148,7 @@ export default function PanitPage() {
     const track = streamRef.current.getVideoTracks()[0];
     if (!track) return;
     try {
-      const capabilities = track.getCapabilities() as any;
+      const capabilities = track.getCapabilities() as { focusMode?: string[] };
       if (capabilities.focusMode?.includes("single-shot") || capabilities.focusMode?.includes("continuous")) {
         const video = videoRef.current;
         if (!video) return;
@@ -159,7 +159,7 @@ export default function PanitPage() {
         
         await track.applyConstraints({
           advanced: [{ focusMode: "single-shot", pointsOfInterest: [{ x, y }] }]
-        } as any);
+        } as unknown as MediaTrackConstraints);
 
         const circle = document.createElement("div");
         circle.className = "absolute border-2 border-yellow-400 rounded-full w-16 h-16 pointer-events-none animate-[ping_0.5s_cubic-bezier(0,0,0.2,1)_1]";

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const processStage = String(formData.get("processStage") ?? "").trim();
     const mediaFiles = formData
       .getAll("mediaFiles")
-      .filter((item): item is File => item instanceof File && item.size > 0);
+      .filter((item): item is File => typeof item === "object" && item !== null && "size" in item && (item as { size: number }).size > 0);
     const legacyMediaFile = formData.get("mediaFile");
 
     if (!animalId) {
@@ -56,8 +56,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (mediaFiles.length === 0 && legacyMediaFile instanceof File && legacyMediaFile.size > 0) {
-      mediaFiles.push(legacyMediaFile);
+    if (mediaFiles.length === 0 && legacyMediaFile && typeof legacyMediaFile === "object" && legacyMediaFile !== null && "size" in legacyMediaFile && (legacyMediaFile as { size: number }).size > 0) {
+      mediaFiles.push(legacyMediaFile as File);
     }
 
     if (mediaFiles.length === 0) {
@@ -98,7 +98,8 @@ export async function POST(request: Request) {
       await updateAnimalDriveUrl(animalId, driveFolderUrl);
     }
 
-    if (imageUrl) {
+    // update image url hanya jika belum ada
+    if (!animal.imageUrl && imageUrl) {
       await updateAnimalImageUrl(animalId, imageUrl);
     }
 

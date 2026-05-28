@@ -436,7 +436,7 @@ async function getOrCreateFolder(
     const folders = response.data.files ?? [];
     if (folders.length > 0 && folders[0]?.id) {
       const existingFolderId = folders[0].id;
-      const webViewLink = (folders[0] as any).webViewLink ?? null;
+      const webViewLink = (folders[0] as { webViewLink?: string }).webViewLink ?? null;
       await ensurePublicFolderLink(drive, existingFolderId, sharedDriveId);
       return { id: existingFolderId, webViewLink };
     }
@@ -455,7 +455,7 @@ async function getOrCreateFolder(
     });
 
     const createdFolderId = folderResponse.data.id ?? parentFolderId;
-    const webViewLink = (folderResponse.data as any).webViewLink ?? null;
+    const webViewLink = (folderResponse.data as { webViewLink?: string }).webViewLink ?? null;
     await ensurePublicFolderLink(drive, createdFolderId, sharedDriveId);
     return { id: createdFolderId, webViewLink };
   } catch (error) {
@@ -480,12 +480,11 @@ async function ensurePublicFolderLink(
     supportsAllDrives: true,
   };
 
-  if (sharedDriveId) {
+  try {
     await drive.permissions.create(permissionOptions);
-    return;
+  } catch (err) {
+    console.warn("[drive] Could not make folder public (might be restricted by domain/Shared Drive settings):", err);
   }
-
-  await drive.permissions.create(permissionOptions);
 }
 
 function isSharedDriveId(value: string) {
