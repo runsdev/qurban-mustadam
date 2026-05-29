@@ -349,35 +349,58 @@ export default function PanitPage() {
     setError("");
     setSuccess("");
 
-    try {
-      const formData = new FormData();
-      formData.append("animalId", normalizedAnimalId);
-      formData.append("processStage", processStage);
+    let successCount = 0;
+    let failCount = 0;
+    const failedItems: string[] = [];
 
-      mediaItems.forEach((item) => {
+    // Kita oper media satu per satu agar jika ada yang gagal, sisanya tetap lanjut
+    for (const item of mediaItems) {
+      try {
+        const formData = new FormData();
+        formData.append("animalId", normalizedAnimalId);
+        formData.append("processStage", processStage);
         formData.append("mediaFiles", item.file, item.file.name);
-      });
 
-      const response = await fetch("/api/panit/upload", {
-        method: "POST",
-        body: formData,
-      });
+        const response = await fetch("/api/panit/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || "Upload gagal");
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || "Upload gagal");
+        }
+        
+        successCount++;
+        // Hapus item dari preview jika sudah berhasil upload
+        setMediaItems((currentItems) => {
+          const uploaded = currentItems.find((i) => i.id === item.id);
+          if (uploaded) {
+            URL.revokeObjectURL(uploaded.previewUrl);
+          }
+          return currentItems.filter((i) => i.id !== item.id);
+        });
+
+      } catch (uploadError) {
+        console.error("Gagal upload media:", item.file.name, uploadError);
+        failCount++;
+        failedItems.push(item.file.name);
       }
+    }
 
-      clearCapturedMedia();
-      setSuccess(data.message || "Media berhasil diupload ke Google Drive.");
-    } catch (uploadError) {
-      setError(
-        uploadError instanceof Error
-          ? uploadError.message
-          : "Gagal upload media",
-      );
-    } finally {
-      setUploading(false);
+    setUploading(false);
+
+    if (failCount > 0) {
+      if (successCount > 0) {
+        setError(`Berhasil upload ${successCount} media, namun gagal upload ${failCount} media: ${failedItems.join(', ')}.`);
+        setSuccess("");
+      } else {
+        setError(`Gagal upload semua (${failCount}) media. Coba lagi.`);
+        setSuccess("");
+      }
+    } else {
+      setSuccess(`Berhasil mengupload ${successCount} media ke Google Drive.`);
+      setError("");
     }
   };
 
