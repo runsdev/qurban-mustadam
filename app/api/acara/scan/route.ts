@@ -5,6 +5,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const LOG_SHEET_NAME = process.env.GOOGLE_ACARA_MAKAN_TAB ?? "makan";
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
+type ScanMode = "regular" | "qurtek";
 
 type ParsedBarcode = {
   randomPrefix: string;
@@ -104,20 +111,28 @@ function formatDisplayTimestamp(isoTimestamp: string) {
   }).format(parsed);
 }
 
+function normalizeScanMode(value: unknown): ScanMode {
+  return String(value ?? "").trim().toLowerCase() === "qurtek" ? "qurtek" : "regular";
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json().catch(() => ({}));
     const barcode = String(payload?.barcode ?? "").trim();
+    const scanMode = normalizeScanMode(payload?.scanMode);
 
     if (!barcode) {
-      return NextResponse.json({ error: "Barcode is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Barcode is required" },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
     }
 
     const parsedBarcode = parseBarcode(barcode);
     if (!parsedBarcode) {
       return NextResponse.json(
         { error: "Format barcode tidak valid" },
-        { status: 400 },
+        { status: 400, headers: NO_STORE_HEADERS },
       );
     }
 
@@ -127,7 +142,7 @@ export async function POST(request: Request) {
     const currentWeekKey = getWeekKey(now);
     const currentIso = getCurrentJakartaIso(now);
 
-    const logRows = await getSheetValues(LOG_SHEET_NAME, "A2:B");
+    const logRows = await getSheetValues(LOG_SHEET_NAME, "A2:C");
     const alreadyUsedThisWeek = logRows.some((row) => {
       const loggedTimestamp = String(row[0] ?? "").trim();
       const loggedNim = String(row[1] ?? "").trim();
@@ -142,85 +157,90 @@ export async function POST(request: Request) {
     if (alreadyUsedThisWeek) {
       return NextResponse.json(
         { error: "Pekan ini QR code sudah digunakan" },
-        { status: 409 },
+        { status: 409, headers: NO_STORE_HEADERS },
       );
     }
 
-    // Cek sisa porsi di header rows
-    const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z2");
-    let porsiRowIdx = -1;
-    let porsiColIdx = -1;
-    let currentPorsi = -1;
+    if (scanMode === "regular") {
+      // Cek sisa porsi di header rows
+      const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z2");
+      let porsiRowIdx = -1;
+      let porsiColIdx = -1;
+      let currentPorsi = -1;
 
-    for (let r = 0; r < headerRows.length; r++) {
-      for (let c = 0; c < headerRows[r].length; c++) {
-        const val = String(headerRows[r][c] || "").trim().toLowerCase();
-        if (val.includes("sisa porsi")) {
-          const match = val.match(/\d+/);
-          if (match) {
-            currentPorsi = parseInt(match[0], 10);
-            porsiRowIdx = r;
-            porsiColIdx = c;
-          } else {
-            const below = String(headerRows[r+1]?.[c] || "").trim();
-            if (/^\d+$/.test(below)) {
-              currentPorsi = parseInt(below, 10);
-              porsiRowIdx = r + 1;
+      for (let r = 0; r < headerRows.length; r++) {
+        for (let c = 0; c < headerRows[r].length; c++) {
+          const val = String(headerRows[r][c] || "").trim().toLowerCase();
+          if (val.includes("sisa porsi")) {
+            const match = val.match(/\d+/);
+            if (match) {
+              currentPorsi = parseInt(match[0], 10);
+              porsiRowIdx = r;
               porsiColIdx = c;
             } else {
-              const right = String(headerRows[r]?.[c + 1] || "").trim();
-              if (/^\d+$/.test(right)) {
-                currentPorsi = parseInt(right, 10);
-                porsiRowIdx = r;
-                porsiColIdx = c + 1;
+              const below = String(headerRows[r + 1]?.[c] || "").trim();
+              if (/^\d+$/.test(below)) {
+                currentPorsi = parseInt(below, 10);
+                porsiRowIdx = r + 1;
+                porsiColIdx = c;
+              } else {
+                const right = String(headerRows[r]?.[c + 1] || "").trim();
+                if (/^\d+$/.test(right)) {
+                  currentPorsi = parseInt(right, 10);
+                  porsiRowIdx = r;
+                  porsiColIdx = c + 1;
+                }
               }
             }
           }
         }
       }
+
+      if (currentPorsi !== -1 && porsiRowIdx !== -1 && porsiColIdx !== -1) {
+        if (currentPorsi <= 0) {
+          return NextResponse.json(
+            { error: "Porsi makanan di spreadsheet sudah habis (0)" },
+            { status: 403, headers: NO_STORE_HEADERS },
+          );
+        }
+        const newPorsi = currentPorsi - 1;
+        const originalText = String(headerRows[porsiRowIdx][porsiColIdx]);
+        let newValueToSave: string | number = newPorsi;
+
+        if (originalText.toLowerCase().includes("sisa porsi")) {
+          newValueToSave = originalText.replace(/\d+/, String(newPorsi));
+        }
+
+        const colLetter = String.fromCharCode(65 + porsiColIdx);
+        const cellToUpdate = `${LOG_SHEET_NAME}!${colLetter}${porsiRowIdx + 1}`;
+        const sheets = getSheetsClient();
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SPREADSHEET_ID,
+          range: cellToUpdate,
+          valueInputOption: "USER_ENTERED",
+          requestBody: { values: [[newValueToSave]] },
+        });
+      }
     }
 
-    if (currentPorsi !== -1 && porsiRowIdx !== -1 && porsiColIdx !== -1) {
-      if (currentPorsi <= 0) {
-        return NextResponse.json(
-          { error: "Porsi makanan di spreadsheet sudah habis (0)" },
-          { status: 403 }
-        );
-      }
-      const newPorsi = currentPorsi - 1;
-      const originalText = String(headerRows[porsiRowIdx][porsiColIdx]);
-      let newValueToSave: string | number = newPorsi;
-      
-      if (originalText.toLowerCase().includes("sisa porsi")) {
-        newValueToSave = originalText.replace(/\d+/, String(newPorsi));
-      }
-      
-      const colLetter = String.fromCharCode(65 + porsiColIdx);
-      const cellToUpdate = `${LOG_SHEET_NAME}!${colLetter}${porsiRowIdx + 1}`;
-      const sheets = getSheetsClient();
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: cellToUpdate,
-        valueInputOption: "USER_ENTERED",
-        requestBody: { values: [[newValueToSave]] },
-      });
-    }
-
-    await appendSheetValues(LOG_SHEET_NAME, [[currentIso, normalizedNim]]);
+    await appendSheetValues(LOG_SHEET_NAME, [[currentIso, normalizedNim, scanMode.toUpperCase()]]);
 
     return NextResponse.json({
       success: true,
-      message: "Scan berhasil",
+      message: scanMode === "qurtek"
+        ? "Registrasi panitia Qurtek berhasil (tidak mengurangi sisa porsi)."
+        : "Scan berhasil",
       nim: normalizedNim,
       barcode,
+      scanMode,
       timestamp: currentIso,
       displayTimestamp: formatDisplayTimestamp(currentIso),
       weekKey: currentWeekKey,
       encodedDate: parsedBarcode.encodedDate,
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     console.error("[api/acara/scan] Scan error:", error);
     const message = error instanceof Error ? error.message : "Gagal memproses scan";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

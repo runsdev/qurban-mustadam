@@ -54,7 +54,7 @@ The acara scanner flow uses one required log tab in the same spreadsheet:
 
 | Tab name | Purpose |
 | --- | --- |
-| `makan` | Scan log with timestamp in column A and NIM in column B, configurable via `GOOGLE_ACARA_MAKAN_TAB` |
+| `makan` | Scan log with timestamp in column A, NIM in column B, dan mode scan di kolom C (`REGULAR` atau `QURTEK`), configurable via `GOOGLE_ACARA_MAKAN_TAB` |
 
 If you want to keep a separate NIM master list for manual checks, you can add one yourself, but the scanner does not require it.
 
@@ -161,9 +161,9 @@ Validates the same 6-digit password stored in the `Password` sheet tab.
 #### Acara Scan
 ```
 POST /api/acara/scan
-Body: { barcode: string }
+Body: { barcode: string, scanMode?: "regular" | "qurtek" }
 ```
-Validates the barcode, prevents reuse within the same Monday-to-Sunday week, and appends successful scans to the `makan` tab.
+Validates the barcode, prevents reuse within the same Monday-to-Sunday week, and appends successful scans to the `makan` tab. Jika `scanMode` adalah `qurtek`, NIM tetap dicatat tapi sisa porsi tidak dikurangi.
 
 #### Secure Webhook for Spreadsheet Automation
 ```

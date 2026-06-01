@@ -7,6 +7,7 @@ type ScanResponse = {
   message: string;
   nim: string;
   barcode: string;
+  scanMode?: "regular" | "qurtek";
   timestamp: string;
   displayTimestamp: string;
   weekKey: string;
@@ -52,7 +53,7 @@ function playSuccessSound() {
   oscillator.connect(gainNode);
 
   oscillator.start();
-  gainNode.gain.exponentialRampToValueAtTime(0.12, audioContext.currentTime + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.28, audioContext.currentTime + 0.01);
   gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.16);
   oscillator.stop(audioContext.currentTime + 0.18);
 
@@ -91,16 +92,22 @@ export default function AcaraPage() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [lastScan, setLastScan] = useState<ScanResponse | null>(null);
   const [scanHistory, setScanHistory] = useState<ScanResponse[]>([]);
+  const [scanMode, setScanMode] = useState<"regular" | "qurtek">("regular");
 
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const detectorRef = useRef<BarcodeDetectorInstance | null>(null);
+  const scanModeRef = useRef<"regular" | "qurtek">("regular");
   const scanFrameRef = useRef<number | null>(null);
   const processingRef = useRef(false);
   const lastDetectedValueRef = useRef<string>("");
 
   const weekLabel = useMemo(() => formatWeekLabel(), []);
+
+  useEffect(() => {
+    scanModeRef.current = scanMode;
+  }, [scanMode]);
 
   const stopCamera = () => {
     if (scanFrameRef.current !== null) {
@@ -133,7 +140,10 @@ export default function AcaraPage() {
       const response = await fetch("/api/acara/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode: normalizedBarcode }),
+        body: JSON.stringify({
+          barcode: normalizedBarcode,
+          scanMode: scanModeRef.current,
+        }),
       });
 
       const data = await response.json().catch(() => ({}));
@@ -146,7 +156,8 @@ export default function AcaraPage() {
       setLastScan(result);
       setScanHistory((currentHistory) => [result, ...currentHistory].slice(0, 5));
       playSuccessSound();
-      showNotice("success", `${result.nim} berhasil dicatat.`);
+      const modeLabel = result.scanMode === "qurtek" ? "Panitia Qurtek" : "Reguler";
+      showNotice("success", `${result.nim} berhasil dicatat (${modeLabel}).`);
       lastDetectedValueRef.current = normalizedBarcode;
 
       window.setTimeout(() => {
@@ -422,6 +433,16 @@ export default function AcaraPage() {
               >
                 Lihat Porsi
               </button>
+              <button
+                type="button"
+                onClick={() => setScanMode((current) => (current === "regular" ? "qurtek" : "regular"))}
+                className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${scanMode === "qurtek"
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-800 hover:border-indigo-400"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+                  }`}
+              >
+                Mode Scan: {scanMode === "qurtek" ? "Panitia Qurtek" : "Reguler"}
+              </button>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
                 <div className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
                   Pekan Aktif
@@ -479,7 +500,9 @@ export default function AcaraPage() {
                   <div className={`rounded-2xl px-4 py-3 text-sm ${cameraReady ? "border border-emerald-200 bg-emerald-50 text-emerald-800" : "border border-amber-200 bg-amber-50 text-amber-800"}`}>
                     {scannerSupported
                       ? cameraReady
-                        ? "Kamera aktif. Tunggu barcode/QR terbaca otomatis."
+                        ? scanMode === "qurtek"
+                          ? "Kamera aktif. Mode Panitia Qurtek: scan akan dicatat tanpa mengurangi sisa porsi."
+                          : "Kamera aktif. Mode Reguler: scan akan mengurangi sisa porsi."
                         : "Menyalakan kamera..."
                       : "Browser tidak mendukung pemindai kamera bawaan."}
                   </div>
@@ -502,6 +525,9 @@ export default function AcaraPage() {
                     </div>
                     <p className="mt-2 text-sm text-slate-300">
                       Tersimpan pada {lastScan.displayTimestamp}
+                    </p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                      {lastScan.scanMode === "qurtek" ? "Panitia Qurtek" : "Reguler"}
                     </p>
                   </div>
                   <div className="rounded-2xl bg-white/10 p-4 text-sm leading-6 text-slate-100">
