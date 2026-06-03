@@ -605,7 +605,7 @@ export default function AcaraPage() {
               <span className="material-symbols-outlined">close</span>
             </button>
 
-            <div className="absolute inset-x-0 top-[45%] right-[13%] z-10 flex flex-col items-center">
+            <div className="absolute inset-x-0 top-[45%] right-[12%] z-10 flex flex-col items-center">
               <div className="font-black leading-none tracking-[-0.06em] text-[#7a4d1c] [font-variant-numeric:tabular-nums] [text-shadow:0_2px_0_rgba(255,247,232,0.96),0_8px_20px_rgba(111,73,23,0.18)] text-[clamp(3.1rem,5.8vw,5.8rem)] sm:text-[clamp(3.5rem,6vw,6.8rem)] lg:text-[clamp(3.8rem,6.2vw,7.4rem)]">
                 Sisa Porsi
               </div>
