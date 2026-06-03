@@ -13,7 +13,7 @@ const NO_STORE_HEADERS = {
 
 export async function GET() {
   try {
-    const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z2");
+    const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z10");
     let currentPorsi = -1;
 
     for (let r = 0; r < headerRows.length; r++) {
@@ -51,7 +51,7 @@ export async function GET() {
     }
 
     return NextResponse.json(
-      { porsi: currentPorsi === -1 ? "?" : currentPorsi, updatedAt: new Date().toISOString() },
+      { porsi: currentPorsi === -1 ? null : currentPorsi, updatedAt: new Date().toISOString() },
       { headers: NO_STORE_HEADERS },
     );
   } catch {

@@ -163,7 +163,7 @@ export async function POST(request: Request) {
 
     if (scanMode === "regular") {
       // Cek sisa porsi di header rows
-      const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z2");
+      const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z10");
       let porsiRowIdx = -1;
       let porsiColIdx = -1;
       let currentPorsi = -1;

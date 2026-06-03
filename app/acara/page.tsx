@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import tvSisaPorsiBg from "../../design/TV Sisa Porsi.png";
 
 type ScanResponse = {
   success: boolean;
@@ -315,18 +316,30 @@ export default function AcaraPage() {
   };
 
   const [showPorsiModal, setShowPorsiModal] = useState(false);
-  const [porsiInfo, setPorsiInfo] = useState<string | number>("Loading...");
+  const [porsiInfo, setPorsiInfo] = useState<string | number | null>(null);
 
-  const fetchPorsi = async () => {
+  const fetchPorsi = useCallback(async () => {
     try {
-      setPorsiInfo("Loading...");
-      const res = await fetch("/api/acara/porsi");
+      const res = await fetch("/api/acara/porsi", { cache: "no-store" });
       const data = await res.json();
-      setPorsiInfo(data.porsi);
+      setPorsiInfo(typeof data.porsi === "number" || typeof data.porsi === "string" ? data.porsi : null);
     } catch {
-      setPorsiInfo("Error");
+      setPorsiInfo(null);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!showPorsiModal) {
+      return;
+    }
+
+    void fetchPorsi();
+    const intervalId = window.setInterval(() => {
+      void fetchPorsi();
+    }, 1500);
+
+    return () => window.clearInterval(intervalId);
+  }, [fetchPorsi, showPorsiModal]);
 
   const handleLogout = () => {
     window.sessionStorage.removeItem("acara-auth");
@@ -575,21 +588,30 @@ export default function AcaraPage() {
       </div>
 
       {showPorsiModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#e0d080] p-4 text-center" style={{ fontFamily: "Poppins, sans-serif" }}>
-          <div className="absolute top-6 right-6">
+        <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
+          <div className="relative h-full w-full overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={tvSisaPorsiBg.src}
+              alt="TV Sisa Porsi"
+              className="h-full w-full object-cover object-center"
+            />
+
             <button
+              type="button"
               onClick={() => setShowPorsiModal(false)}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-black/10 transition hover:bg-black/20"
+              className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-[#d6ad48] bg-[rgba(255,248,233,0.95)] text-[#5d4318] shadow-[0_10px_30px_rgba(90,58,16,0.18)] transition hover:bg-white"
             >
-              <span className="material-symbols-outlined text-black">close</span>
+              <span className="material-symbols-outlined">close</span>
             </button>
-          </div>
-          <div>
-            <h2 className="text-4xl font-bold text-[#4a3b1a] md:text-6xl">
-              Sisa Porsi
-            </h2>
-            <div className="mt-8 text-7xl font-black text-[#56421a] md:text-[10rem]">
-              {porsiInfo}
+
+            <div className="absolute left-[10%] top-[31%] z-10 w-[52%] text-left sm:left-[32%] sm:w-[50%] lg:left-[32%] lg:w-[47%]">
+              <div className="font-black leading-none tracking-[-0.06em] text-[#7a4d1c] [font-variant-numeric:tabular-nums] [text-shadow:0_2px_0_rgba(255,247,232,0.96),0_8px_20px_rgba(111,73,23,0.18)] text-[clamp(3.1rem,5.8vw,5.8rem)] sm:text-[clamp(3.5rem,6vw,6.8rem)] lg:text-[clamp(3.8rem,6.2vw,7.4rem)]">
+                Sisa Porsi
+              </div>
+              <div className="mt-2 whitespace-nowrap font-black leading-none tracking-[-0.06em] text-[#7a4d1c] [font-variant-numeric:tabular-nums] [text-shadow:0_2px_0_rgba(255,247,232,0.96),0_8px_20px_rgba(111,73,23,0.18)] text-[clamp(4rem,11vw,10rem)] sm:text-[clamp(4.4rem,11vw,10.8rem)] lg:text-[clamp(4.8rem,11vw,11.5rem)]">
+                {porsiInfo ?? "\u00A0"}
+              </div>
             </div>
           </div>
         </div>
