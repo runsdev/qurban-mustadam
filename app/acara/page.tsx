@@ -322,9 +322,12 @@ export default function AcaraPage() {
     try {
       const res = await fetch("/api/acara/porsi", { cache: "no-store" });
       const data = await res.json();
-      setPorsiInfo(typeof data.porsi === "number" || typeof data.porsi === "string" ? data.porsi : null);
+      setPorsiInfo(prev => {
+        const newValue = typeof data.porsi === "number" || typeof data.porsi === "string" ? data.porsi : null;
+        return newValue !== null ? newValue : prev;
+      });
     } catch {
-      setPorsiInfo(null);
+      // Jangan set ke null saat error agar angka lama tetap tampil
     }
   }, []);
 
