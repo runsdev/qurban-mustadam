@@ -11,50 +11,104 @@ const NO_STORE_HEADERS = {
   Expires: "0",
 };
 
+// In-memory fallback cache: will survive as long as the server process is alive.
+let lastKnownPorsi: number | null = null;
+let lastKnownAt: string | null = null;
+
+// Optional override to force reading a specific cell (e.g. "B2").
+const OVERRIDE_CELL = process.env.GOOGLE_ACARA_PORSI_CELL || null;
+
 export async function GET() {
   try {
-    const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z10");
-    let currentPorsi = -1;
+    // Read a reasonably sized area. If OVERRIDE_CELL is set we'll still read a larger block
+    // but only use the override coordinate.
+    const headerRows = await getSheetValues(LOG_SHEET_NAME, "A1:Z50");
+    let currentPorsi: number | null = null;
+
+    const normalizeNumber = (s: string) => {
+      const match = s.match(/[\d.,]+/);
+      if (!match) return null;
+      // Remove common thousands separators and keep digits only
+      const cleaned = match[0].replace(/[.,]/g, "");
+      const n = parseInt(cleaned, 10);
+      return Number.isNaN(n) ? null : n;
+    };
+
+    const colLettersToIndex = (letters: string) => {
+      let v = 0;
+      for (let i = 0; i < letters.length; i++) {
+        v = v * 26 + (letters.charCodeAt(i) - 64);
+      }
+      return v - 1; // A -> 0
+    };
+
+    const parseCell = (cell: string) => {
+      const m = String(cell || "").toUpperCase().match(/^([A-Z]+)(\d+)$/);
+      if (!m) return null;
+      const col = colLettersToIndex(m[1]);
+      const row = parseInt(m[2], 10) - 1;
+      return { r: row, c: col };
+    };
+
+    // If an explicit cell is configured, read that exact cell and return it (if present).
+    if (OVERRIDE_CELL) {
+      const coord = parseCell(OVERRIDE_CELL);
+      if (coord) {
+        const probe = String(headerRows[coord.r]?.[coord.c] || "").trim();
+        const n = normalizeNumber(probe);
+        if (n !== null) {
+          currentPorsi = n;
+          lastKnownPorsi = currentPorsi;
+          lastKnownAt = new Date().toISOString();
+          return NextResponse.json({ porsi: currentPorsi, updatedAt: lastKnownAt, cached: false, cell: OVERRIDE_CELL }, { headers: NO_STORE_HEADERS });
+        }
+        // If explicit cell present but empty, don't attempt wide search.
+        return NextResponse.json({ porsi: null, updatedAt: new Date().toISOString(), cached: false, cell: OVERRIDE_CELL }, { headers: NO_STORE_HEADERS });
+      }
+      // If OVERRIDE_CELL is malformed, ignore and continue to label detection.
+    }
 
     for (let r = 0; r < headerRows.length; r++) {
-      for (let c = 0; c < headerRows[r].length; c++) {
-        const val = String(headerRows[r][c] || "").trim().toLowerCase();
+      for (let c = 0; c < (headerRows[r] || []).length; c++) {
+        const raw = String(headerRows[r][c] || "").trim();
+        const val = raw.toLowerCase();
         if (val.includes("sisa porsi")) {
-          const match = val.match(/\d+/);
-          if (match) {
-            currentPorsi = parseInt(match[0], 10);
-            return NextResponse.json(
-              { porsi: currentPorsi, updatedAt: new Date().toISOString() },
-              { headers: NO_STORE_HEADERS },
-            );
-          } else {
-            const below = String(headerRows[r+1]?.[c] || "").trim();
-            if (/^\d+$/.test(below)) {
-               currentPorsi = parseInt(below, 10);
-               return NextResponse.json(
-                 { porsi: currentPorsi, updatedAt: new Date().toISOString() },
-                 { headers: NO_STORE_HEADERS },
-               );
-            } else {
-              const right = String(headerRows[r]?.[c + 1] || "").trim();
-              if (/^\d+$/.test(right)) {
-                currentPorsi = parseInt(right, 10);
-                return NextResponse.json(
-                  { porsi: currentPorsi, updatedAt: new Date().toISOString() },
-                  { headers: NO_STORE_HEADERS },
-                );
-              }
+          // Only check the cell directly below the label to avoid picking unrelated numbers.
+          const checkedCells = [
+            { r: r + 1, c },
+          ];
+
+          let found: number | null = null;
+          let foundCoord: { r: number; c: number } | null = null;
+
+          for (const p of checkedCells) {
+            const probe = String(headerRows[p.r]?.[p.c] || "").trim();
+            const n = normalizeNumber(probe);
+            if (n !== null) {
+              found = n;
+              foundCoord = p;
+              break;
             }
+          }
+
+          if (found !== null) {
+            currentPorsi = found;
+            lastKnownPorsi = currentPorsi;
+            lastKnownAt = new Date().toISOString();
+            return NextResponse.json({ porsi: currentPorsi, updatedAt: lastKnownAt, cached: false, cellCoord: foundCoord }, { headers: NO_STORE_HEADERS });
           }
         }
       }
     }
 
-    return NextResponse.json(
-      { porsi: currentPorsi === -1 ? null : currentPorsi, updatedAt: new Date().toISOString() },
-      { headers: NO_STORE_HEADERS },
-    );
-  } catch {
+    // If we didn't find a current porsi, fallback to last known cached value (if any)
+    if (currentPorsi === null && lastKnownPorsi !== null) {
+      return NextResponse.json({ porsi: lastKnownPorsi, updatedAt: lastKnownAt, cached: true }, { headers: NO_STORE_HEADERS });
+    }
+
+    return NextResponse.json({ porsi: currentPorsi, updatedAt: new Date().toISOString(), cached: false }, { headers: NO_STORE_HEADERS });
+  } catch (err) {
+    console.error("Error fetching porsi:", err);
     return NextResponse.json({ error: "Failed to fetch porsi" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }
